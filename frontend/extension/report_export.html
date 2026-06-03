@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>TracePoint - Tehdit İstihbaratı Raporu</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #fff;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        
+        header {
+            border-bottom: 3px solid #c5a963;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        
+        .logo-area h1 {
+            margin: 0;
+            color: #c5a963;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .logo-area p {
+            margin: 5px 0 0 0;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .meta-info {
+            text-align: right;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        
+        h2 {
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-top: 30px;
+            font-size: 20px;
+        }
+        
+        .summary-box {
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            border-radius: 0 8px 8px 0;
+            font-size: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 13px;
+        }
+        
+        th, td {
+            border: 1px solid #cbd5e1;
+            padding: 10px 14px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 600;
+        }
+        
+        .type-badge {
+            display: inline-block;
+            background: #e2e8f0;
+            color: #475569;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .ioc-val {
+            font-family: 'JetBrains Mono', monospace;
+            color: #2563eb;
+            word-break: break-all;
+        }
+        
+        .spl-section {
+            margin-top: 40px;
+        }
+        
+        .spl-item {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .spl-ioc {
+            font-weight: bold;
+            color: #0f172a;
+            margin-bottom: 5px;
+        }
+        
+        .spl-query {
+            background-color: #0f172a;
+            color: #a5b4fc;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 5px 0;
+            border-left: 3px solid #6366f1;
+        }
+        
+        @media print {
+            body {
+                background-color: #fff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <h1>TracePoint - Kuveyt Türk</h1>
+                <p>Otomatik Tehdit İstihbaratı ve Avcılık Raporu</p>
+            </div>
+            <div class="meta-info">
+                <div id="reportDate"></div>
+                <div id="reportUrl" style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+            </div>
+        </header>
+        
+        <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+            <button id="printBtn" style="background:#10b981; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">PDF Olarak Kaydet</button>
+        </div>
+
+        <h2>Yapay Zeka Analiz Özeti</h2>
+        <div class="summary-box" id="summaryBox">Yükleniyor...</div>
+
+        <h2>Tespit Edilen IOC Kategorileri</h2>
+        <p style="font-size:12px; color:#64748b;">Not: Tehdit istihbarat raporlarından çıkarılan bu varlıklar zararlı/şüpheli kabul edilir.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 15%;">Tip</th>
+                    <th style="width: 85%;">IOC Değerleri</th>
+                </tr>
+            </thead>
+            <tbody id="iocTableBody">
+                <!-- JS Injection -->
+            </tbody>
+        </table>
+
+        <h2>Splunk (SPL) Tehdit Avcılığı Toplu Sorguları</h2>
+        <div class="spl-section" id="splSection">
+            <!-- JS Injection -->
+        </div>
+    </div>
+
+    <script src="report_export.js"></script>
+</body>
+</html>

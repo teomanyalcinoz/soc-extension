@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TracePoint - Kuveyt Türk</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome yerine lokal/küçük svg ikonlar da kullanılabilir ancak projede yüklüydü -->
+    <link rel="stylesheet" href="popup_style.css">
+</head>
+
+<body>
+    <div class="ext-container">
+        <header class="ext-header">
+            <div class="logo">
+                <img src="icons/icon.png" width="34" height="34" alt="logo" style="object-fit: contain;">
+                <h2 style="color: #c5a963; font-size: 15px;">TracePoint - Kuveyt Türk</h2>
+            </div>
+            <span class="badge" id="typeBadge">READY</span>
+        </header>
+
+        <div class="search-target">
+            <span class="target-label">Hedef:</span>
+            <span class="target-value" id="targetValue">Henüz Seçim Yok</span>
+        </div>
+
+        <main class="ext-content" id="extContent">
+            <!-- Başlangıç State -->
+            <div class="state-msg" id="msgEmpty">
+                Herhangi bir IP, Hash veya Domain seçip "Tara" butonuna basın.
+            </div>
+
+            <!-- Yükleniyor State -->
+            <div class="state-msg" id="msgLoading" style="display: none;">
+                <div class="spinner"></div><br>
+                Tehdit İstihbarat Merkezleri Taranıyor...
+            </div>
+
+            <!-- Sonuç Listesi -->
+            <div id="resultsWrapper" style="display: none;">
+                <!-- AI Summary -->
+                <div class="ai-box">
+                    <h4>Yapay Zeka Özeti</h4>
+                    <p id="aiSummaryBox">Hazırlanıyor...</p>
+                </div>
+
+                <!-- Cross Search Cards -->
+                <div class="sources-list" id="sourcesList">
+                    <!-- JS Injection -->
+                </div>
+
+                <!-- ─────────────────────────────────────────── -->
+                <!-- SPLUNK SIEM ENTEGRASYONU PANELİ             -->
+                <!-- ─────────────────────────────────────────── -->
+                <div class="splunk-panel" id="splunkPanel" style="display: none;">
+                    <div class="splunk-panel-header">
+                        <span class="splunk-panel-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:5px;">
+                                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+                            </svg>
+                            Splunk SPL Sorguları
+                        </span>
+                        <span class="splunk-loading-badge" id="splunkLoadingBadge" style="display:none;">
+                            <div class="splunk-spinner"></div> Üretiliyor...
+                        </span>
+                        <span class="splunk-ready-badge" id="splunkReadyBadge" style="display:none;">✓ Hazır</span>
+                    </div>
+                    <div id="splunkQueriesList">
+                        <!-- JS Injection: SPL sorgu kartları buraya eklenir -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <footer class="ext-footer">
+            <button id="refreshBtn" class="refresh-btn">Sonuçları Yenile</button>
+            <button id="scanReportBtn" class="refresh-btn" style="background-color: #6366f1; color: white; margin-top: 5px;">Sayfa Raporunu Tara</button>
+        </footer>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>

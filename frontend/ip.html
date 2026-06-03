@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC Asistanı | IP İstihbarat</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="cyber-grid"></div>
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved logo-icon"></i>
+                <h1>SOC Asistanı</h1>
+            </div>
+            <p class="subtitle">Çoklu Kaynak Destekli Eşzamanlı Tehdit Analizi</p>
+
+            <nav class="app-nav">
+                <a href="index.html" class="nav-btn"><i class="fa-solid fa-fingerprint"></i> Hash İstihbaratı</a>
+                <a href="ip.html" class="nav-btn active"><i class="fa-solid fa-network-wired"></i> IP Adresi
+                    İstihbaratı</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="search-section glass-panel">
+                <div class="search-box">
+                    <i class="fa-solid fa-globe search-icon"></i>
+                    <input type="text" id="ipInput" placeholder="Analiz edilecek IPv4 Adresini girin (örn: 8.8.8.8)..."
+                        autocomplete="off" spellcheck="false">
+                    <button id="searchBtn">
+                        <span>Analiz Et</span>
+                        <i class="fa-solid fa-radar icon-spin-hover"></i>
+                    </button>
+                </div>
+                <div class="error-msg" id="errorMsg"></div>
+            </section>
+
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <div class="result-title-group">
+                        <h2><i class="fa-solid fa-chart-network"></i> İstihbarat Sonuçları</h2>
+                        <span class="hash-display" id="analyzedIp"></span>
+                    </div>
+                </div>
+
+                <!-- AI Summary and Chart Top Section -->
+                <div class="dashboard-top">
+                    <div class="ai-summary-card glass-panel">
+                        <div class="ai-header">
+                            <i class="fa-solid fa-microchip ai-icon"></i>
+                            <h3>Yapay Zeka (AI) SOC Özeti</h3>
+                        </div>
+                        <p id="aiSummaryText">Özet yükleniyor...</p>
+                    </div>
+
+                    <div class="chart-card glass-panel" id="chartCard" style="display: none;">
+                        <canvas id="threatChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="cards-container" id="cardsContainer">
+                    <!-- Cards will be dynamically injected via JS -->
+                </div>
+            </section>
+
+            <div class="loader-container" id="loader" style="display: none;">
+                <div class="radar"></div>
+                <p class="loader-text">IP İstihbarat Ağı Taranıyor<span>.</span><span>.</span><span>.</span></p>
+            </div>
+        </main>
+    </div>
+
+    <script src="ip_script.js"></script>
+</body>
+
+</html>

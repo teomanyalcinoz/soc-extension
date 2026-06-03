@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.venv
+.DS_Store
+.antigravityignore
+*.log
+backend/test_out.txt

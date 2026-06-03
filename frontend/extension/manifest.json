@@ -1,0 +1,41 @@
+{
+    "manifest_version": 3,
+    "name": "TracePoint - Kuveyt Türk",
+    "version": "2.0",
+    "description": "Kuveyt Türk | Bağlam Duyarlı Tehdit İstihbarat Asistanı. Seçilen IP, Hash ve Domainleri OSINT üzerinden analiz eder.",
+    "icons": {
+        "16": "icons/icon.png",
+        "48": "icons/icon.png",
+        "128": "icons/icon.png"
+    },
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage"
+    ],
+    "host_permissions": [
+        "*://*/*",
+        "http://127.0.0.1:8000/*"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "css": [
+                "content_style.css"
+            ],
+            "js": [
+                "content_script.js"
+            ]
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_title": "TracePoint - Kuveyt Türk"
+    }
+}
