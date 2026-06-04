@@ -1,23 +1,58 @@
-# 🛡️ SOC Assistant Extension (TracePoint)
+# 🛡️ TracePoint - Siber Güvenlik İstihbarat Asistanı
 
-SOC Assistant, Siber Güvenlik Operasyon Merkezleri (SOC) bünyesindeki siber güvenlik analistleri için tasarlanmış, güçlü, yapay zeka destekli bir Chrome eklentisidir. Hedefi, tehdit analizi süreçlerini tek bir merkezde toplamak, otomatize etmek ve analistlerin daha hızlı karar almasını sağlamaktır.
+![TracePoint Banner](https://via.placeholder.com/1200x300/0a1628/00cec9?text=TracePoint+-+Kuveyt+Turk+SOC+Assistant)
 
-## ✨ Temel Özellikler
+**TracePoint**, Siber Güvenlik Operasyon Merkezleri (SOC) bünyesindeki siber güvenlik analistleri için tasarlanmış, güçlü, yapay zeka destekli ve modern bir Chrome eklentisidir. Hedefi, tehdit analizi süreçlerini tek bir merkezde toplamak, otomatize etmek ve analistlerin daha hızlı, daha isabetli kararlar almasını sağlamaktır.
 
-- 🔍 **Çoklu OSINT Entegrasyonu:** IP, Hash, Domain, URL ve E-Posta adreslerini tek tıkla VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, Sucuri, USOM, HaveIBeenPwned, Spamhaus, ve daha birçok tehdit istihbarat kaynağında sorgular.
-- 🧠 **Yapay Zeka Destekli Özetleme:** Analiz sonuçlarını LLM modelleri (Azure OpenAI / GPT-5.1 vb.) kullanarak saniyeler içinde yorumlar ve analiste yönetici özeti sunar.
-- 🐚 **PowerShell Deobfuscation ve Analizi:** Gizlenmiş (obfuscated) PowerShell komut dosyalarını çözer (Base64 vb.) ve LLM kullanarak zararlı niyetleri tespit edip raporlar.
-- 📑 **Sayfa Raporu Tarama (Page Scanner):** Açık olan sekmedeki bir tehdit istihbaratı sayfasını (veya makaleyi) analiz eder, içerisindeki tüm IOC'leri (IP, Hash, URL, Email) otomatik çeker, doğrular ve toplu halde repütasyon taraması yapar.
-- 📊 **PDF Rapor Çıktısı:** Sayfa taramalarının veya bireysel analizlerin sonuçlarını profesyonel bir PDF raporu olarak dışa aktarmanıza olanak tanır.
-- 🎯 **Dinamik SPL (Splunk) Sorgu Üretimi:** Seçilen IOC türüne ve OSINT analizinden çıkan bağlama (örn: Proxy, Firewall, WAF, Windows Sysmon) göre anında çalıştırılabilir gelişmiş Splunk (SPL) sorguları üretir.
-- ⚡ **Splunk REST API Entegrasyonu:** Üretilen SPL sorgularını kopyalamanıza gerek kalmadan, tek bir butonla doğrudan kurumunuzun Splunk ortamında çalıştırabilir ve sonuçları eklenti arayüzünde tablo şeklinde görüntüleyebilirsiniz.
+---
+
+## ✨ Öne Çıkan Özellikler
+
+### 🔍 Çoklu OSINT & İstihbarat Taraması
+IP, Hash, Domain, URL ve E-Posta adreslerini tek tıkla **VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, Sucuri, USOM, HaveIBeenPwned, Spamhaus** gibi global istihbarat kaynaklarında eşzamanlı olarak sorgular.
+
+### 🧠 LLM Destekli Yapay Zeka Yorumu
+Analiz sonuçlarını, **Azure OpenAI (GPT-5.1 vb.)** kullanarak saniyeler içinde analiz eder. Analistlere uzun verileri okumak yerine, risk seviyesini ve alınması gereken aksiyonları içeren yönetici özetleri (Executive Summary) sunar.
+
+### 🌐 Sayfa İçi Rapor Taraması (Page Scanner)
+Açık olan sekmedeki bir tehdit makalesini veya siber güvenlik raporunu tek tıkla okur. Sayfa içindeki tüm IOC'leri (IP, Hash, URL, Email) otomatik tespit eder, doğrular ve toplu halde repütasyon taraması yapar.
+
+### 🕸️ İnteraktif Tehdit Ağı Grafiği (Threat Graph)
+Bulunan zararlı IOC'ler arasındaki ilişkileri görselleştirmek için **D3.js** tabanlı tam ekran "Tehdit Ağı Grafiği" oluşturur. Nodlar (IP, Hash, Domain) arasındaki bağlantıları sürükle-bırak dinamikleriyle analiz etmenizi sağlar.
+
+### 🎯 Dinamik SPL (Splunk) Entegrasyonu
+Seçilen IOC türüne ve tespit edilen OSINT bağlamına (örn: Proxy, Firewall, WAF, Windows Sysmon) göre anında çalıştırılabilir gelişmiş **Splunk (SPL) sorguları** üretir.
+*Üstelik kopyalamaya gerek kalmadan, doğrudan eklenti üzerinden kurumunuzun Splunk ortamına istek atabilir ve logları tablolar halinde anında eklentide görebilirsiniz!*
+
+### 🔓 CVE Zafiyet Analizi
+Sayfalarda geçen **CVE (Örn: CVE-2024-XXXX)** numaralarına tıkladığınızda otomatik olarak **NIST NVD API**'sine bağlanır. Zafiyetin CVSS skorunu, özetini, zafiyetli sistemleri ve yama bilgilerini şık bir Modal (Overlay) içinde sunar.
+
+### 🔔 İşletim Sistemi Bildirimleri (Desktop Notifications)
+Arka planda yürütülen uzun taramalar tamamlandığında veya hata alındığında, sizi işletim sistemi üzerinden anında uyarır.
+
+### 💎 Modern ve Premium UI (Glassmorphism)
+Uygulama arayüzü; modern web trendlerine uygun olarak **Glassmorphism (Buzlu cam)** efekti, akıcı mikro-animasyonlar, gece modu (Dark Theme) ve estetik renk paletleri ile tamamen premium bir analist deneyimi sunar.
+
+---
+
+## 📸 Ekran Görüntüleri
+
+> **Not:** Görsellerinizi proje klasörüne ekleyip aşağıdaki linkleri kendi görsellerinize (`assets/screenshot1.png` gibi) bağlayabilirsiniz.
+
+| Sayfa Taraması & Overlay UI | Splunk SPL Entegrasyonu | Tehdit Ağı (Threat Graph) |
+|:---:|:---:|:---:|
+| <img src="https://via.placeholder.com/350x250/1a233a/00cec9?text=Page+Scanner+Overlay" alt="Page Scanner"> | <img src="https://via.placeholder.com/350x250/1a233a/00cec9?text=Splunk+SPL+Panel" alt="Splunk SPL"> | <img src="https://via.placeholder.com/350x250/1a233a/00cec9?text=D3.js+Threat+Graph" alt="Threat Graph"> |
+
+---
 
 ## 🛠️ Teknoloji Yığını
 
-- **Frontend:** HTML, Vanilla CSS (Glassmorphism & Modern UI), Vanilla JavaScript, Chrome Extension API (Manifest V3)
+- **Frontend:** HTML5, Vanilla CSS (Glassmorphism), Vanilla JavaScript, D3.js, Chrome Extension API (Manifest V3)
 - **Backend:** Python, FastAPI, Uvicorn, httpx, python-dotenv
-- **AI / LLM:** Azure OpenAI
+- **AI / LLM:** Azure OpenAI (GPT-5.1-ptu)
 - **SIEM:** Splunk REST API
+
+---
 
 ## 🚀 Kurulum ve Başlangıç
 
@@ -32,15 +67,17 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-`.env` dosyasını `backend` dizininde oluşturun ve aşağıdaki değerleri kendi altyapınıza göre doldurun:
+`.env` dosyasını `backend` dizininde oluşturun ve ortamınıza göre doldurun:
 
 ```env
+# Splunk Ayarları
 SPLUNK_URL=https://your-splunk-instance:8089
 SPLUNK_TOKEN=your-splunk-rest-token
 SPLUNK_VERIFY_SSL=False
 
+# Azure OpenAI LLM Ayarları
 LLM_MODEL=gpt-5.1-ptu
-LLM_URL=https://your-azure-openai-endpoint
+LLM_URL=https://apim-ai-management.azure-api.net/.../chat/completions?api-version=2024-12-01-preview
 LLM_API_VERSION=2024-12-01-preview
 LLM_API_KEY=your-api-key
 ```
@@ -56,14 +93,19 @@ python main.py
 2. Adres çubuğuna `chrome://extensions/` yazarak uzantılar sayfasına gidin.
 3. Sağ üst köşeden **"Geliştirici modu" (Developer mode)** seçeneğini aktif hale getirin.
 4. Sol üstten **"Paketlenmemiş öğe yükle" (Load unpacked)** butonuna tıklayın.
-5. Projedeki `frontend` klasörünü seçin.
+5. Projedeki `frontend/extension` veya `frontend` klasörünü seçin.
 
-## 💡 Nasıl Kullanılır?
+---
 
-- Eklenti butonuna tıkladığınızda açılan pencereden veya seçili bir metne sağ tıklayarak incelemek istediğiniz Hash, IP, Domain veya Email'i girebilirsiniz.
-- Rapor sayfasındaysanız **"Sayfa Raporunu Tara"** butonuna basarak metindeki tüm IOC'lerin bulunup analiz edilmesini sağlayabilirsiniz.
-- Oluşturulan Splunk sorgularını doğrudan çalıştırabilir veya kopyalayıp düzenleyebilirsiniz.
+## 💡 Kullanım İpuçları
+
+1. Herhangi bir web sitesinde (Örn: BleepingComputer, The Hacker News) bir makale okurken eklenti pop-up'ını açıp **"Sayfa Raporunu Tara"** butonuna basın.
+2. Tarama sonucunda tespit edilen IP'lerin yanındaki **"Tehdit Grafiğini Göster"** ikonuna basarak IP/Hash ilişkilerini analiz edin.
+3. Splunk entegrasyonu aktifse, eklentinin size sunduğu **SPL sorgularını "⚡ Çalıştır"** butonu ile tek tıkla test edin.
+4. Sayfada dolaşırken karşılaştığınız CVE kodlarının **üzerine tıklayarak** anında NIST destekli Modal analiz penceresini açın.
+
+---
 
 ## 🤝 Katkıda Bulunma
 
-Bu proje açık kaynaklı değildir, ancak yetkili geliştiriciler PR açarak katkıda bulunabilir. Tüm yeni eklemelerin `requirements.txt` ve mimariye uyumlu olduğundan emin olun.
+Bu proje kapalı kaynaklı ve iç operasyonlar için tasarlanmıştır. Geliştirici ekibindeyseniz, branch oluşturup PR açarak katkıda bulunabilirsiniz. Eklenen yeni kütüphaneleri `requirements.txt` dosyasına işlemeyi unutmayın.
