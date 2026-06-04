@@ -247,16 +247,22 @@ function buildSplCard(q) {
 
     div.innerHTML = `
         <div class="spl-card-header">
-            <span class="spl-index-badge" style="background-color:${color}; opacity: 0.9;">${q.index || 'index'}</span>
-            <div style="display:flex; gap:6px; align-items:center;">
+            <div style="display:flex; align-items:center;">
+                <span class="spl-index-title">${q.index || 'index'}</span>
+                <span class="spl-status-badge" style="border: 1px solid ${color}; color: ${color}; background: ${color}15;">${q.label || 'Active'}</span>
+            </div>
+            <div style="display:flex; gap:12px; align-items:center;">
                 <button class="spl-edit-btn" id="${editBtnId}" title="SPL sorgusunu düzenle">
-                    ✏️ Düzenle
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Düzenle
                 </button>
                 <button class="spl-run-btn" id="${runBtnId}" title="Splunk'ta çalıştır">
-                    ⚡ Çalıştır
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Çalıştır
                 </button>
                 <button class="spl-copy-btn" id="${copyBtnId}" title="SPL sorgusunu kopyala">
-                    📋 Kopyala
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Kopyala
                 </button>
             </div>
         </div>
@@ -282,7 +288,7 @@ function buildSplCard(q) {
             preEl.replaceWith(textarea);
             textarea.focus();
 
-            editBtn.textContent = '💾 Kaydet';
+            editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Kaydet';
             editBtn.classList.add('editing');
 
             // Kaydet handler
@@ -294,7 +300,7 @@ function buildSplCard(q) {
                 newPre.textContent = currentQuery;
                 textarea.replaceWith(newPre);
 
-                editBtn.textContent = '✏️ Düzenle';
+                editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Düzenle';
                 editBtn.classList.remove('editing');
                 
                 editBtn.removeEventListener('click', saveHandler);
@@ -310,12 +316,13 @@ function buildSplCard(q) {
     // ── Kopyala butonu ────────────────────────────────────────────
     const copyBtn = div.querySelector(`#${copyBtnId}`);
     if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
+        copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             navigator.clipboard.writeText(currentQuery).then(() => {
-                copyBtn.textContent = '✅ Kopyalandı';
+                copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg> Kopyalandı';
                 copyBtn.classList.add('copied');
-                setTimeout(() => {
-                    copyBtn.textContent = '📋 Kopyala';
+                setTimeout(() => { 
+                    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Kopyala';
                     copyBtn.classList.remove('copied');
                 }, 2000);
             }).catch(() => {

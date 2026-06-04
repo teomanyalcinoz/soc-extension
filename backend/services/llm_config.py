@@ -28,7 +28,7 @@ def build_llm_payload(messages, temperature=0.3, max_tokens=300):
     }
     # Azure OpenAI gpt-5.1-ptu veya benzeri modellerde max_completion_tokens kullanılır
     if "gpt-5.1" in MODEL_NAME.lower() or "azure" in LLM_URL.lower():
-        payload["max_completion_tokens"] = max_tokens
+        payload["max_completion_tokens"] = 4096
     else:
         payload["max_tokens"] = max_tokens
         

@@ -50,7 +50,7 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 380px;
+    width: 450px;
     background: linear-gradient(170deg, #0a1628 0%, #0d2b56 60%, #0a1628 100%);
     border: 1px solid rgba(197, 169, 99, 0.3);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(197, 169, 99, 0.1);

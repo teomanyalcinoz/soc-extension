@@ -725,17 +725,23 @@ function buildInPageSplCard(q) {
     const resultsId = `${uid}-results`;
 
     div.innerHTML = `
-        <div class="spl-card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span class="spl-index-badge" style="background-color:${color}; color:#fff; font-size:10px; font-weight:700; padding:3px 7px; border-radius:4px; text-transform:uppercase;">${q.index || 'index'}</span>
-            <div style="display:flex; gap:6px; align-items:center;">
-                <button id="${editBtnId}" title="SPL sorgusunu düzenle" style="font-size:11px; padding:3px 8px; cursor:pointer; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.4); color:#fbbf24; border-radius:4px;">
-                    ✏️ Düzenle
+        <div class="spl-card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; overflow:hidden;">
+                <span style="font-size:12px; font-weight:700; color:#f8fafc; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;">${q.index || 'index'}</span>
+                <span style="font-size:9px; font-weight:700; padding:2px 8px; border-radius:12px; margin-left:8px; border:1px solid ${color}; color:${color}; background:${color}15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">${q.label || 'Active'}</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+                <button id="${editBtnId}" title="SPL sorgusunu düzenle" style="font-size:11px; padding:4px 6px; cursor:pointer; background:transparent; border:none; color:#94a3b8; border-radius:4px; display:inline-flex; align-items:center; gap:4px; transition:color 0.2s;" onmouseover="this.style.color='#f8fafc'" onmouseout="this.style.color='#94a3b8'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Düzenle
                 </button>
-                <button class="spl-run-btn" id="${runBtnId}" title="Splunk'ta çalıştır" style="font-size:11px; padding:3px 8px; cursor:pointer; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.4); color:#6ee7b7; border-radius:4px;">
-                    ⚡ Çalıştır
+                <button class="spl-run-btn" id="${runBtnId}" title="Splunk'ta çalıştır" style="font-size:11px; padding:4px 6px; cursor:pointer; background:transparent; border:none; color:#94a3b8; border-radius:4px; display:inline-flex; align-items:center; gap:4px; transition:color 0.2s;" onmouseover="this.style.color='#f8fafc'" onmouseout="this.style.color='#94a3b8'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Çalıştır
                 </button>
-                <button class="spl-copy-btn" id="${copyBtnId}" title="SPL sorgusunu kopyala" style="font-size:11px; padding:3px 8px; cursor:pointer; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.4); color:#a5b4fc; border-radius:4px;">
-                    📋 Kopyala
+                <button class="spl-copy-btn" id="${copyBtnId}" title="SPL sorgusunu kopyala" style="font-size:11px; padding:4px 6px; cursor:pointer; background:transparent; border:none; color:#94a3b8; border-radius:4px; display:inline-flex; align-items:center; gap:4px; transition:color 0.2s;" onmouseover="this.style.color='#f8fafc'" onmouseout="this.style.color='#94a3b8'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Kopyala
                 </button>
             </div>
         </div>
@@ -760,10 +766,8 @@ function buildInPageSplCard(q) {
             preEl.replaceWith(textarea);
             textarea.focus();
 
-            editBtn.textContent = '💾 Kaydet';
-            editBtn.style.background = 'rgba(16,185,129,0.15)';
-            editBtn.style.borderColor = 'rgba(16,185,129,0.5)';
-            editBtn.style.color = '#6ee7b7';
+            editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Kaydet';
+            editBtn.style.color = '#10b981';
 
             const saveHandler = () => {
                 currentQuery = textarea.value;
@@ -774,10 +778,8 @@ function buildInPageSplCard(q) {
                 newPre.textContent = currentQuery;
                 textarea.replaceWith(newPre);
 
-                editBtn.textContent = '✏️ Düzenle';
-                editBtn.style.background = 'rgba(251,191,36,0.1)';
-                editBtn.style.borderColor = 'rgba(251,191,36,0.4)';
-                editBtn.style.color = '#fbbf24';
+                editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Düzenle';
+                editBtn.style.color = '#94a3b8';
 
                 editBtn.removeEventListener('click', saveHandler);
                 editBtn.addEventListener('click', editHandler);
@@ -795,11 +797,17 @@ function buildInPageSplCard(q) {
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             navigator.clipboard.writeText(currentQuery).then(() => {
-                copyBtn.textContent = '✅ Kopyalandı';
-                setTimeout(() => { copyBtn.textContent = '📋 Kopyala'; }, 2000);
+                copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Kopyalandı';
+                copyBtn.style.color = '#10b981';
+                setTimeout(() => { 
+                    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Kopyala';
+                    copyBtn.style.color = '#94a3b8';
+                }, 2000);
             }).catch(() => {
-                copyBtn.textContent = '❌ Hata';
-                setTimeout(() => { copyBtn.textContent = '📋 Kopyala'; }, 2000);
+                copyBtn.innerHTML = '❌ Hata';
+                setTimeout(() => { 
+                    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:12px; height:12px; stroke-width:1.5px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Kopyala'; 
+                }, 2000);
             });
         });
     }
