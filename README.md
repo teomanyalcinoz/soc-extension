@@ -1,6 +1,6 @@
 # 🛡️ TracePoint - Siber Güvenlik İstihbarat Asistanı
 
-![TracePoint Banner](https://via.placeholder.com/1200x300/0a1628/00cec9?text=TracePoint+-+Kuveyt+Turk+SOC+Assistant)
+![TracePoint Banner](https://placehold.co/1200x300/0a1628/00cec9.png?text=TracePoint+-+Kuveyt+Turk+SOC+Assistant)
 
 **TracePoint**, Siber Güvenlik Operasyon Merkezleri (SOC) bünyesindeki siber güvenlik analistleri için tasarlanmış, güçlü, yapay zeka destekli ve modern bir Chrome eklentisidir. Hedefi, tehdit analizi süreçlerini tek bir merkezde toplamak, otomatize etmek ve analistlerin daha hızlı, daha isabetli kararlar almasını sağlamaktır.
 
@@ -41,7 +41,7 @@ Uygulama arayüzü; modern web trendlerine uygun olarak **Glassmorphism (Buzlu c
 
 | Sayfa Taraması & Overlay UI | Splunk SPL Entegrasyonu | Tehdit Ağı (Threat Graph) |
 |:---:|:---:|:---:|
-| <img src="https://via.placeholder.com/350x250/1a233a/00cec9?text=Page+Scanner+Overlay" alt="Page Scanner"> | <img src="https://via.placeholder.com/350x250/1a233a/00cec9?text=Splunk+SPL+Panel" alt="Splunk SPL"> | <img src="https://via.placeholder.com/350x250/1a233a/00cec9?text=D3.js+Threat+Graph" alt="Threat Graph"> |
+| <img src="https://placehold.co/350x250/1a233a/00cec9.png?text=Page+Scanner+Overlay" alt="Page Scanner"> | <img src="https://placehold.co/350x250/1a233a/00cec9.png?text=Splunk+SPL+Panel" alt="Splunk SPL"> | <img src="https://placehold.co/350x250/1a233a/00cec9.png?text=D3.js+Threat+Graph" alt="Threat Graph"> |
 
 ---
 
