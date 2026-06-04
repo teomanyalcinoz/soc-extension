@@ -64,11 +64,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 chrome.action.setBadgeText({ text: "1" });
                 chrome.action.setBadgeBackgroundColor({ color: "#ef4444" });
 
+                if (data.status === "error") {
+                    _sendNotification("Tarama Hatası", `[${type.toUpperCase()}] ${val} taramasında sunucu hatası oluştu.`);
+                } else {
+                    _sendNotification("Tarama Tamamlandı", `[${type.toUpperCase()}] ${val} başarıyla incelendi.`);
+                }
+
                 sendResponse(latestScanResult);
                 chrome.runtime.sendMessage({ action: "update_popup", result: latestScanResult }).catch(() => { });
             })
             .catch(err => {
                 latestScanResult = { status: "error", type: type, value: val, error: err.toString(), splData: null };
+                _sendNotification("Tarama Hatası", `[${type.toUpperCase()}] ${val} incelenirken hata oluştu: ${err.message}`);
                 sendResponse(latestScanResult);
                 chrome.runtime.sendMessage({ action: "update_popup", result: latestScanResult }).catch(() => { });
             });
@@ -138,11 +145,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 chrome.action.setBadgeText({ text: "R" });
                 chrome.action.setBadgeBackgroundColor({ color: "#8b5cf6" });
                 
+                if (data.status === "error") {
+                    _sendNotification("Rapor Hatası", "Sayfa raporu analiz edilirken bir sorun oluştu.");
+                } else {
+                    const count = data.total_iocs_found || 0;
+                    _sendNotification("Rapor Tamamlandı", `Sayfada toplam ${count} IOC tespit edildi ve analiz edildi.`);
+                }
+
                 sendResponse(latestScanResult);
                 chrome.runtime.sendMessage({ action: "update_popup", result: latestScanResult }).catch(() => { });
             })
             .catch(err => {
                 latestScanResult = { status: "error", type: "report", value: "Sayfa Raporu", error: err.toString(), splData: null };
+                _sendNotification("Rapor Hatası", `Rapor analizinde bağlantı hatası: ${err.message}`);
                 sendResponse(latestScanResult);
                 chrome.runtime.sendMessage({ action: "update_popup", result: latestScanResult }).catch(() => { });
             });
@@ -271,4 +286,17 @@ function _broadcastSplUpdate(splData, tabId) {
             splData: splData
         }).catch(() => { });
     }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Masaüstü Bildirimleri
+// ─────────────────────────────────────────────────────────────────
+function _sendNotification(title, message) {
+    chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon.png',
+        title: `TracePoint: ${title}`,
+        message: message,
+        priority: 1
+    });
 }

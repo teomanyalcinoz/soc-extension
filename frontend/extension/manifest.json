@@ -11,7 +11,8 @@
     "permissions": [
         "activeTab",
         "scripting",
-        "storage"
+        "storage",
+        "notifications"
     ],
     "host_permissions": [
         "*://*/*",
@@ -30,6 +31,8 @@
                 "content_style.css"
             ],
             "js": [
+                "d3.min.js",
+                "threat_graph.js",
                 "content_script.js"
             ]
         }

@@ -356,11 +356,14 @@ function updateInPagePanel(result) {
                     </div>`;
                 });
                 
-                // PDF Export Button
+                // Action Buttons
                 html += `
-                <div style="margin-top:15px; width:100%;">
-                    <button id="inpagePdfBtn" style="width:100%; background:#10b981; color:#fff; border:none; border-radius:4px; padding:8px; font-weight:bold; cursor:pointer;">
-                        📄 PDF Raporu İndir
+                <div style="margin-top:15px; width:100%; display:flex; gap:8px;">
+                    <button id="inpageGraphBtn" style="flex:1; background:#8b5cf6; color:#fff; border:none; border-radius:6px; padding:8px; font-weight:bold; cursor:pointer; font-size:11px; transition:all 0.2s;">
+                        🕸️ Tehdit Grafiği
+                    </button>
+                    <button id="inpagePdfBtn" style="flex:1; background:#10b981; color:#fff; border:none; border-radius:6px; padding:8px; font-weight:bold; cursor:pointer; font-size:11px; transition:all 0.2s;">
+                        📄 PDF İndir
                     </button>
                 </div>`;
             } else {
@@ -419,6 +422,17 @@ function updateInPagePanel(result) {
                         reportData: rawData,
                         reportUrl: window.location.href
                     });
+                });
+            }
+
+            const graphBtn = document.getElementById('inpageGraphBtn');
+            if (graphBtn) {
+                graphBtn.addEventListener('click', () => {
+                    if (typeof openThreatGraph === 'function') {
+                        openThreatGraph(rawData.grouped_iocs, "Sayfa Raporu");
+                    } else {
+                        console.error("TracePoint: openThreatGraph is not defined. Make sure threat_graph.js is loaded.");
+                    }
                 });
             }
             
