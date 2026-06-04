@@ -1,5 +1,27 @@
 // Context-Aware Script - Highlight Event Dinleyicisi
 
+// --- Güvenli Eklenti API Yardımcıları ---
+function getExtIconUrl() {
+    try {
+        if (chrome.runtime && !!chrome.runtime.id) return chrome.runtime.getURL('icons/icon.png');
+    } catch (e) {}
+    return '';
+}
+
+function safeSendMessage(message, callback) {
+    try {
+        if (chrome.runtime && !!chrome.runtime.id) {
+            chrome.runtime.sendMessage(message, callback);
+        } else {
+            console.warn("Eklenti bağlamı koptu.");
+            alert("TracePoint eklentisi güncellendi. Lütfen çalışmaya devam etmek için sayfayı yenileyin (F5).");
+        }
+    } catch (e) {
+        console.warn("Context invalidated error:", e);
+        alert("TracePoint eklentisi güncellendi. Lütfen çalışmaya devam etmek için sayfayı yenileyin (F5).");
+    }
+}
+
 // Güvenlik Regex Kontrolleri
 const regexes = {
     md5: /^[a-fA-F0-9]{32}$/,
@@ -114,7 +136,7 @@ document.addEventListener('mouseup', function (e) {
                     showInPagePanel(match.value, match.type); // Hemen In-Page Paneli göster!
 
                     // Arka plana mesaj gönder!
-                    chrome.runtime.sendMessage({
+                    safeSendMessage({
                         action: "scan_threat",
                         dataType: match.type,
                         dataValue: match.value
@@ -170,7 +192,7 @@ function showInPagePanel(targetValue, type = '') {
     panel.innerHTML = `
         <div class="soc-ext-header">
             <div class="soc-ext-title" style="color: #c5a963;">
-                <span class="soc-btn-logo" style="display:inline-block; width:16px; height:16px; background-image: url('${chrome.runtime.getURL('icons/icon.png')}');"></span> TracePoint - Kuveyt Türk
+                <span class="soc-btn-logo" style="display:inline-block; width:16px; height:16px; background-image: url('${getExtIconUrl()}');"></span> TracePoint - Kuveyt Türk
             </div>
             <div class="soc-ext-close" id="soc-ext-close-btn">✕</div>
         </div>
@@ -238,7 +260,7 @@ function showDecodedPanel(encodedText, type) {
         iocHtml = `<div style="margin-top:12px; font-size:12px; border-top:1px solid #334155; padding-top:8px;">
             <strong style="color:#6366f1;">Gizli IoC Bulundu:</strong>
             <ul style="padding-left:15px; margin-top:5px;">
-                ${extractedIoCs.map(ioc => `<li><span style="color:#e2e8f0;">[${ioc.type.toUpperCase()}]</span> <span style="font-family:monospace; color:#38bdf8; cursor:pointer; text-decoration:underline;" onclick="scanExtractedIoc('${ioc.type}', '${ioc.value}')">${ioc.value}</span> (Tıkla ve Tara)</li>`).join('')}
+                ${extractedIoCs.map(ioc => `<li><span style="color:#e2e8f0;">[${ioc.type.toUpperCase()}]</span> <span class="soc-ext-ioc-link" data-type="${ioc.type}" data-value="${ioc.value.replace(/"/g, '&quot;')}" style="font-family:monospace; color:#38bdf8; cursor:pointer; text-decoration:underline;">${ioc.value}</span> (Tıkla ve Tara)</li>`).join('')}
             </ul>
         </div>`;
     }
@@ -246,7 +268,7 @@ function showDecodedPanel(encodedText, type) {
     panel.innerHTML = `
         <div class="soc-ext-header">
             <div class="soc-ext-title" style="color: #c5a963;">
-                <span class="soc-btn-logo" style="display:inline-block; width:16px; height:16px; background-image: url('${chrome.runtime.getURL('icons/icon.png')}');"></span> Akıllı Decoder (CyberChef)
+                <span class="soc-btn-logo" style="display:inline-block; width:16px; height:16px; background-image: url('${getExtIconUrl()}');"></span> Akıllı Decoder (CyberChef)
             </div>
             <div class="soc-ext-close" id="soc-ext-close-btn">✕</div>
         </div>
@@ -266,12 +288,22 @@ function showDecodedPanel(encodedText, type) {
     `;
     document.body.appendChild(panel);
     document.getElementById('soc-ext-close-btn').addEventListener('click', () => panel.remove());
+    
+    // Add event listeners for extracted IOCs
+    const iocLinks = panel.querySelectorAll('.soc-ext-ioc-link');
+    iocLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+            const value = this.getAttribute('data-value');
+            if (window.scanExtractedIoc) window.scanExtractedIoc(type, value);
+        });
+    });
 }
 
 // Panel içerisindeki IoC'ye tıklandığında In-Page analizi tetikleyen yardımcı fonksiyon (global scope)
 window.scanExtractedIoc = function (type, value) {
     showInPagePanel(value, type);
-    chrome.runtime.sendMessage({ action: "scan_threat", dataType: type, dataValue: value }, function (response) {
+    safeSendMessage({ action: "scan_threat", dataType: type, dataValue: value }, function (response) {
         if (response) updateInPagePanel(response);
     });
 };
@@ -294,25 +326,22 @@ function updateInPagePanel(result) {
             html += `<div style="color:#cbd5e1; font-size:12px; margin-bottom:8px; font-weight:bold;">Taranan IOC Kategorileri (${rawData.total_iocs_found || 0} Adet)</div>`;
             
             if (rawData.grouped_iocs && rawData.grouped_iocs.length > 0) {
+                const reportGroupsMap = {}; // Global store for click listeners
+                window._reportGroupsMap = reportGroupsMap; // Ensure it's accessible
+
                 rawData.grouped_iocs.forEach((group, index) => {
                     const gId = `accordion-group-${index}`;
+                    reportGroupsMap[gId] = group;
                     const t = group.type.toUpperCase();
                     const cnt = group.count;
-                    
-                    let splHtml = '';
-                    if (group.spl_queries && group.spl_queries.length > 0) {
-                        splHtml = `<div style="margin-top:10px; width:100%;"><strong style="font-size:10px; color:#6366f1;">Toplu Splunk Sorguları:</strong><div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">`;
-                        group.spl_queries.forEach(q => {
-                            splHtml += `<div style="background:#0f172a; padding:6px; border-radius:4px; font-family:monospace; font-size:10px; color:#a5b4fc; word-break:break-all;">[${q.index}] ${escapeHtml(q.query)}</div>`;
-                        });
-                        splHtml += `</div></div>`;
-                    }
                     
                     let valuesHtml = `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">`;
                     group.values.forEach(v => {
                         valuesHtml += `<span style="background:#1e293b; color:#cbd5e1; font-family:monospace; font-size:10px; padding:3px 6px; border-radius:4px; border:1px solid #334155;">${escapeHtml(v)}</span>`;
                     });
                     valuesHtml += `</div>`;
+                    
+                    let splHtml = `<div id="spl-container-${gId}"></div>`;
 
                     html += `
                     <div class="soc-ext-card" style="padding:0; margin-bottom:8px; overflow:hidden;">
@@ -347,7 +376,37 @@ function updateInPagePanel(result) {
                     const targetId = e.currentTarget.getAttribute('data-target');
                     const content = document.getElementById(targetId);
                     if (content) {
-                        content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                        const isExpanded = content.style.display === 'block';
+                        content.style.display = isExpanded ? 'none' : 'block';
+                        
+                        // Lazy loading SPL requests
+                        if (!isExpanded && !content.hasAttribute('data-spl-loaded')) {
+                            content.setAttribute('data-spl-loaded', 'true');
+                            
+                            const groupData = window._reportGroupsMap[targetId];
+                            const splContainer = document.getElementById(`spl-container-${targetId}`);
+                            
+                            if (splContainer && groupData) {
+                                splContainer.innerHTML = `<div style="color:#fbbf24; font-size:11px; margin-top:10px;"><span class="splunk-spinner"></span> SPL Sorguları üretiliyor...</div>`;
+                                
+                                safeSendMessage({
+                                    action: "fetch_report_spl",
+                                    iocType: groupData.type,
+                                    values: groupData.values
+                                }, (response) => {
+                                    if (response && response.queries && response.queries.length > 0) {
+                                        let splHtml = `<div style="margin-top:10px; width:100%;"><strong style="font-size:10px; color:#6366f1;">Toplu Splunk Sorguları:</strong><div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">`;
+                                        response.queries.forEach(q => {
+                                            splHtml += `<div style="background:#0f172a; padding:6px; border-radius:4px; font-family:monospace; font-size:10px; color:#a5b4fc; word-break:break-all;">[${q.index}] ${escapeHtml(q.query)}</div>`;
+                                        });
+                                        splHtml += `</div></div>`;
+                                        splContainer.innerHTML = splHtml;
+                                    } else {
+                                        splContainer.innerHTML = `<div style="color:#ef4444; font-size:11px; margin-top:10px;">SPL üretilemedi veya bulunamadı.</div>`;
+                                    }
+                                });
+                            }
+                        }
                     }
                 });
             });
@@ -355,7 +414,7 @@ function updateInPagePanel(result) {
             const pdfBtn = document.getElementById('inpagePdfBtn');
             if (pdfBtn) {
                 pdfBtn.addEventListener('click', () => {
-                    chrome.runtime.sendMessage({
+                    safeSendMessage({
                         action: "open_pdf",
                         reportData: rawData,
                         reportUrl: window.location.href
@@ -755,7 +814,7 @@ function buildInPageSplCard(q) {
                     </div>
                 </div>`;
 
-            chrome.runtime.sendMessage(
+            safeSendMessage(
                 { action: "execute_splunk", query: currentQuery },
                 (response) => {
                     runBtn.disabled = false;
@@ -877,7 +936,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         showInPagePanel("Tüm Sayfa Raporu", "report");
 
-        chrome.runtime.sendMessage({
+        safeSendMessage({
             action: "scan_report",
             text: text,
             url: window.location.href
@@ -890,3 +949,266 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 });
+
+// ─────────────────────────────────────────────────────────────────
+// CVE DETAY ANALİZİ (NIST NVD) — Modal/Overlay Sistemi
+// ─────────────────────────────────────────────────────────────────
+
+// CVE cache: aynı CVE tekrar tıklandığında API'ye gitmez
+const _cveCache = {};
+
+/**
+ * Sayfadaki tüm CVE numaralarını (CVE-YYYY-NNNNN) bulur ve
+ * tıklanabilir link haline getirir.
+ */
+function highlightCVEsOnPage() {
+    const CVE_REGEX = /\bCVE-\d{4}-\d{4,}\b/gi;
+    const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+            acceptNode: function(node) {
+                // Eklentimizin kendi elementlerini atla
+                if (node.parentElement && (
+                    node.parentElement.closest('#soc-ext-inpage-panel') ||
+                    node.parentElement.closest('.soc-cve-modal') ||
+                    node.parentElement.closest('.soc-cve-backdrop') ||
+                    node.parentElement.closest('.soc-scanner-btn') ||
+                    node.parentElement.tagName === 'SCRIPT' ||
+                    node.parentElement.tagName === 'STYLE' ||
+                    node.parentElement.tagName === 'TEXTAREA' ||
+                    node.parentElement.tagName === 'INPUT' ||
+                    node.parentElement.classList.contains('soc-cve-link')
+                )) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                return CVE_REGEX.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }
+        }
+    );
+
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+        textNodes.push(node);
+    }
+
+    textNodes.forEach(textNode => {
+        const text = textNode.nodeValue;
+        // Reset regex lastIndex
+        CVE_REGEX.lastIndex = 0;
+
+        const fragment = document.createDocumentFragment();
+        let lastIndex = 0;
+        let match;
+
+        while ((match = CVE_REGEX.exec(text)) !== null) {
+            // Match öncesi düz metin
+            if (match.index > lastIndex) {
+                fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+            }
+
+            // CVE linkini oluştur
+            const cveSpan = document.createElement('span');
+            cveSpan.className = 'soc-cve-link';
+            cveSpan.textContent = match[0];
+            cveSpan.setAttribute('data-cve-id', match[0].toUpperCase());
+            cveSpan.setAttribute('title', `${match[0]} detayları için tıkla`);
+            cveSpan.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openCveModal(this.getAttribute('data-cve-id'));
+            });
+
+            fragment.appendChild(cveSpan);
+            lastIndex = match.index + match[0].length;
+        }
+
+        // Kalan metin
+        if (lastIndex < text.length) {
+            fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+        }
+
+        if (fragment.childNodes.length > 0) {
+            textNode.parentNode.replaceChild(fragment, textNode);
+        }
+    });
+}
+
+/**
+ * CVE Modal (Overlay) açar. Lazy loading ile API isteği atar.
+ */
+function openCveModal(cveId) {
+    // Önceki modalı kapat
+    closeCveModal();
+
+    // Backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'soc-cve-backdrop';
+    backdrop.id = 'soc-cve-backdrop';
+    backdrop.addEventListener('click', closeCveModal);
+
+    // Modal
+    const modal = document.createElement('div');
+    modal.className = 'soc-cve-modal';
+    modal.id = 'soc-cve-modal';
+
+    // Header
+    modal.innerHTML = `
+        <div class="soc-cve-modal-header">
+            <div class="soc-cve-modal-header-left">
+                <span class="soc-cve-modal-title">🛡️ ${escapeHtml(cveId)}</span>
+                <span id="soc-cve-cvss-badge"></span>
+            </div>
+            <span class="soc-cve-modal-close" id="soc-cve-modal-close">✕</span>
+        </div>
+        <div class="soc-cve-modal-body" id="soc-cve-modal-body">
+            <div class="soc-cve-loading">
+                <div class="soc-ext-spinner"></div>
+                <div class="soc-cve-loading-text">NIST NVD sorgulanıyor...</div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+
+    // Kapatma butonu
+    document.getElementById('soc-cve-modal-close').addEventListener('click', closeCveModal);
+
+    // ESC tuşu ile kapatma
+    document.addEventListener('keydown', _cveEscHandler);
+
+    // Cache kontrolü
+    if (_cveCache[cveId]) {
+        _renderCveData(_cveCache[cveId]);
+        return;
+    }
+
+    // Backend'e istek at
+    safeSendMessage({ action: "fetch_cve", cveId: cveId }, function(response) {
+        if (!response) {
+            _renderCveError(cveId, "Eklenti bağlantısı kopmuş olabilir. Sayfayı yenileyin.");
+            return;
+        }
+
+        if (response.status === "success") {
+            _cveCache[cveId] = response;
+            _renderCveData(response);
+        } else {
+            _renderCveError(cveId, response.error || "CVE bilgisi alınamadı veya NIST sunucuları meşgul.");
+        }
+    });
+}
+
+function _cveEscHandler(e) {
+    if (e.key === 'Escape') closeCveModal();
+}
+
+function closeCveModal() {
+    const backdrop = document.getElementById('soc-cve-backdrop');
+    const modal = document.getElementById('soc-cve-modal');
+    if (backdrop) backdrop.remove();
+    if (modal) modal.remove();
+    document.removeEventListener('keydown', _cveEscHandler);
+}
+
+/**
+ * CVSS skoruna göre renk sınıfı ve etiket döner.
+ */
+function _getCvssBadgeInfo(score, severity) {
+    if (score === null || score === undefined) {
+        return { cls: 'soc-cvss-none', label: 'N/A' };
+    }
+    const s = parseFloat(score);
+    if (s >= 9.0) return { cls: 'soc-cvss-critical', label: `CRITICAL ${s.toFixed(1)}` };
+    if (s >= 7.0) return { cls: 'soc-cvss-high', label: `HIGH ${s.toFixed(1)}` };
+    if (s >= 4.0) return { cls: 'soc-cvss-medium', label: `MEDIUM ${s.toFixed(1)}` };
+    if (s > 0) return { cls: 'soc-cvss-low', label: `LOW ${s.toFixed(1)}` };
+    return { cls: 'soc-cvss-none', label: `NONE ${s.toFixed(1)}` };
+}
+
+/**
+ * CVE verisi başarıyla geldiyse modal body'sini render eder.
+ */
+function _renderCveData(data) {
+    const body = document.getElementById('soc-cve-modal-body');
+    const badge = document.getElementById('soc-cve-cvss-badge');
+    if (!body) return;
+
+    // CVSS Badge
+    const badgeInfo = _getCvssBadgeInfo(data.cvss_score, data.cvss_severity);
+    if (badge) {
+        badge.className = `soc-cvss-badge ${badgeInfo.cls}`;
+        badge.textContent = badgeInfo.label;
+    }
+
+    let html = '';
+
+    // Zafiyet Özeti
+    html += `<div class="soc-cve-section-title">📋 Zafiyet Özeti</div>`;
+    html += `<div class="soc-cve-description">${escapeHtml(data.description || 'Açıklama bulunamadı.')}</div>`;
+
+    // Etkilenen Varlıklar
+    if (data.affected_assets && data.affected_assets.length > 0) {
+        html += `<div class="soc-cve-section-title">🎯 Etkilenen Varlıklar (${data.affected_assets.length})</div>`;
+        html += `<div class="soc-cve-asset-cloud">`;
+        data.affected_assets.forEach(asset => {
+            html += `<span class="soc-cve-asset-tag">${escapeHtml(asset.vendor)} — ${escapeHtml(asset.product)}</span>`;
+        });
+        html += `</div>`;
+    }
+
+    // Referanslar
+    if (data.references && data.references.length > 0) {
+        html += `<div class="soc-cve-section-title">🔗 Referanslar</div>`;
+        html += `<ul class="soc-cve-ref-list">`;
+        data.references.forEach(ref => {
+            html += `<li><a href="${escapeHtml(ref)}" target="_blank" rel="noopener noreferrer" class="soc-cve-ref-link">${escapeHtml(ref)}</a></li>`;
+        });
+        html += `</ul>`;
+    }
+
+    // Meta Bilgi
+    html += `<div class="soc-cve-meta">`;
+    if (data.published) {
+        html += `<span>📅 Yayınlanma: ${escapeHtml(data.published)}</span>`;
+    }
+    html += `<span>Kaynak: NIST NVD</span>`;
+    html += `</div>`;
+
+    body.innerHTML = html;
+}
+
+/**
+ * Hata durumunda modal body'sine zarif hata mesajı yazar.
+ */
+function _renderCveError(cveId, errorMsg) {
+    const body = document.getElementById('soc-cve-modal-body');
+    if (!body) return;
+
+    body.innerHTML = `
+        <div style="text-align:center; padding:30px 20px;">
+            <div style="font-size:36px; margin-bottom:12px;">⚠️</div>
+            <div style="color:#f87171; font-size:14px; font-weight:600; margin-bottom:8px;">${escapeHtml(cveId)}</div>
+            <div style="color:#94a3b8; font-size:13px; line-height:1.5;">${escapeHtml(errorMsg)}</div>
+        </div>
+    `;
+}
+
+// ── Sayfa yüklendiğinde CVE'leri otomatik olarak tıklanabilir yap ──
+setTimeout(() => { highlightCVEsOnPage(); }, 1500);
+
+// MutationObserver: Dinamik yüklenen içerikler için de CVE algıla
+const _cveObserver = new MutationObserver((mutations) => {
+    let hasNewContent = false;
+    mutations.forEach(m => {
+        if (m.addedNodes.length > 0) hasNewContent = true;
+    });
+    if (hasNewContent) {
+        // Debounce: Çok fazla mutation olursa tek seferde çalışsın
+        clearTimeout(window._cveObserverTimeout);
+        window._cveObserverTimeout = setTimeout(() => { highlightCVEsOnPage(); }, 800);
+    }
+});
+_cveObserver.observe(document.body, { childList: true, subtree: true });

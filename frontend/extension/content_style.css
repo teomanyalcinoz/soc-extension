@@ -368,3 +368,265 @@
     font-size: 12px;
     color: #94a3b8;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   CVE Detay Modal/Overlay Stilleri
+   ───────────────────────────────────────────────────────────────── */
+
+/* Sayfadaki CVE linkleri */
+.soc-cve-link {
+    color: #f59e0b;
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    font-weight: 600;
+    transition: color 0.2s, text-shadow 0.2s;
+}
+
+.soc-cve-link:hover {
+    color: #fbbf24;
+    text-shadow: 0 0 6px rgba(251, 191, 36, 0.35);
+}
+
+/* Backdrop (arka plan karartma) */
+.soc-cve-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 2147483646;
+    animation: socFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes socFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Modal Ana Container */
+.soc-cve-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 520px;
+    max-width: 92vw;
+    max-height: 85vh;
+    background: linear-gradient(165deg, #0f1b33 0%, #0d2b56 50%, #0f1b33 100%);
+    border: 1px solid rgba(197, 169, 99, 0.5);
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.85), 0 0 40px rgba(197, 169, 99, 0.15);
+    border-radius: 12px;
+    z-index: 2147483647;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    color: #e2e8f0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: socModalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes socModalPop {
+    from { transform: translate(-50%, -50%) scale(0.85); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.soc-cve-modal-header {
+    padding: 16px 20px;
+    background: linear-gradient(180deg, rgba(197, 169, 99, 0.12) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(197, 169, 99, 0.25);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.soc-cve-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.soc-cve-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: 0.5px;
+}
+
+.soc-cve-modal-close {
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 20px;
+    font-weight: bold;
+    transition: color 0.2s, transform 0.2s;
+    line-height: 1;
+    padding: 4px;
+}
+
+.soc-cve-modal-close:hover {
+    color: #fff;
+    transform: scale(1.15);
+}
+
+.soc-cve-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* CVSS Badge */
+.soc-cvss-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.soc-cvss-critical {
+    background: rgba(220, 38, 38, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(220, 38, 38, 0.5);
+}
+
+.soc-cvss-high {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.soc-cvss-medium {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.soc-cvss-low {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.soc-cvss-none {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* Section Headers */
+.soc-cve-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #c5a963;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 18px 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.soc-cve-section-title:first-child {
+    margin-top: 0;
+}
+
+/* Description text */
+.soc-cve-description {
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.65;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+/* Affected Assets - Tag Cloud */
+.soc-cve-asset-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.soc-cve-asset-tag {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.15s;
+}
+
+.soc-cve-asset-tag:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: #6366f1;
+}
+
+/* Reference Links */
+.soc-cve-ref-list {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0 0;
+}
+
+.soc-cve-ref-list li {
+    margin-bottom: 4px;
+}
+
+.soc-cve-ref-link {
+    color: #38bdf8;
+    text-decoration: none;
+    font-size: 11px;
+    word-break: break-all;
+    transition: color 0.15s;
+}
+
+.soc-cve-ref-link:hover {
+    color: #7dd3fc;
+    text-decoration: underline;
+}
+
+/* Meta info (published date, etc.) */
+.soc-cve-meta {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 11px;
+    color: #64748b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Loading skeleton */
+.soc-cve-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 12px;
+}
+
+.soc-cve-loading-text {
+    color: #94a3b8;
+    font-size: 13px;
+    animation: socPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes socPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

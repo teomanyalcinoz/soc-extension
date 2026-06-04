@@ -150,6 +150,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     
+    // Rapor taraması için SPL On-Demand Getirme
+    if (request.action === "fetch_report_spl") {
+        fetch(`${API_BASE}/report/spl`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ioc_type: request.iocType, values: request.values })
+        })
+        .then(res => res.json())
+        .then(data => sendResponse(data))
+        .catch(err => sendResponse({ error: err.toString() }));
+        return true;
+    }
+    
+    // CVE Detay Analizi (NIST NVD)
+    if (request.action === "fetch_cve") {
+        const cveId = encodeURIComponent(request.cveId);
+        fetch(`${API_BASE}/cve/${cveId}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`CVE API Hatası: ${res.status}`);
+                return res.json();
+            })
+            .then(data => sendResponse(data))
+            .catch(err => sendResponse({ status: "error", cve_id: request.cveId, error: err.toString() }));
+        return true;
+    }
+
     // Content script üzerinden gelen PDF açma isteği
     if (request.action === "open_pdf") {
         chrome.storage.local.set({ reportData: request.reportData, reportUrl: request.reportUrl }, () => {

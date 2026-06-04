@@ -174,6 +174,39 @@ async def analyze_report_endpoint(request: ReportRequest):
     results = await analyze_report_text(content, request.url)
     return results
 
+class ReportSplRequest(BaseModel):
+    ioc_type: str
+    values: List[str]
+
+@app.post("/api/analyze/report/spl")
+async def report_spl_endpoint(request: ReportSplRequest):
+    """
+    Rapor taraması sonucunda bulunan IOC grupları için lazy loading ile
+    asenkron SPL sorgusu üretir.
+    """
+    from services.spl_intelligence import generate_bulk_spl_queries
+    
+    if not request.values:
+        raise HTTPException(status_code=400, detail="Değer listesi boş olamaz.")
+        
+    # Cache key
+    val_str = ",".join(sorted(request.values))
+    cache_key = f"spl_bulk_{hashlib.md5((request.ioc_type + val_str).encode('utf-8')).hexdigest()}"
+    cached = get_from_cache(cache_key)
+    if cached:
+        return cached
+
+    queries = await generate_bulk_spl_queries(request.ioc_type, request.values)
+    
+    result = {
+        "ioc_type": request.ioc_type,
+        "query_count": len(queries),
+        "queries": queries
+    }
+    
+    set_to_cache(cache_key, result)
+    return result
+
 # ──────────────────────────────────────────────────────────────────
 # SPLUNK SIEM ENTEGRASYONU
 # ──────────────────────────────────────────────────────────────────
@@ -245,6 +278,34 @@ async def execute_spl_endpoint(request: SplunkExecuteRequest):
         raise HTTPException(status_code=400, detail="SPL sorgusu boş olamaz.")
 
     result = await execute_spl_query(query)
+    return result
+
+
+# ──────────────────────────────────────────────────────────────────
+# CVE DETAY ANALİZİ (NIST NVD)
+# ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/analyze/cve/{cve_id}")
+async def analyze_cve_endpoint(cve_id: str):
+    """
+    Verilen CVE numarasını (örn: CVE-2024-1234) NIST NVD API üzerinden sorgular.
+    CVSS skoru, zafiyet açıklaması ve etkilenen varlıkları döner.
+    """
+    from services.cve_intelligence import fetch_cve_details
+
+    cve_id = cve_id.strip().upper()
+    if not cve_id.startswith("CVE-"):
+        raise HTTPException(status_code=400, detail="Geçersiz CVE formatı. Örnek: CVE-2024-1234")
+
+    cached = get_from_cache(f"cve_{cve_id}")
+    if cached:
+        return cached
+
+    result = await fetch_cve_details(cve_id)
+
+    if result.get("status") == "success":
+        set_to_cache(f"cve_{cve_id}", result)
+
     return result
 
 

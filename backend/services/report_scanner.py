@@ -193,22 +193,13 @@ Rapor Metni:
                 
             grouped_iocs = []
             
-            # 2. Her bir grup için asenkron olarak toplu SPL sorgusu üret
-            async def process_group(ioc_type, values):
-                spl_res = await generate_bulk_spl_queries(ioc_type, values)
-                return {
+            # 2. Sadece gruplanmış değerleri dön (SPL sorguları frontend tarafından on-demand istenecek)
+            for ioc_type, values in grouped_dict.items():
+                grouped_iocs.append({
                     "type": ioc_type,
                     "count": len(values),
-                    "values": values,
-                    "spl_queries": spl_res
-                }
-                
-            tasks = [process_group(k, v) for k, v in grouped_dict.items()]
-            group_results = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            for res in group_results:
-                if not isinstance(res, Exception):
-                    grouped_iocs.append(res)
+                    "values": values
+                })
                 
             return {
                 "status": "success",
