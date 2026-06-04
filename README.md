@@ -39,9 +39,9 @@ Uygulama arayüzü; modern web trendlerine uygun olarak **Glassmorphism (Buzlu c
 
 > **Not:** Görsellerinizi proje klasörüne ekleyip aşağıdaki linkleri kendi görsellerinize (`assets/screenshot1.png` gibi) bağlayabilirsiniz.
 
-| Sayfa Taraması & Overlay UI | Splunk SPL Entegrasyonu | Tehdit Ağı (Threat Graph) |
-|:---:|:---:|:---:|
-| <img src="https://placehold.co/350x250/1a233a/00cec9.png?text=Page+Scanner+Overlay" alt="Page Scanner"> | <img src="https://placehold.co/350x250/1a233a/00cec9.png?text=Splunk+SPL+Panel" alt="Splunk SPL"> | <img src="https://placehold.co/350x250/1a233a/00cec9.png?text=D3.js+Threat+Graph" alt="Threat Graph"> |
+| OSINT & Tehdit İstihbaratı | Yapay Zeka (LLM) Özeti | Dinamik SPL (Splunk) | Sayfa Raporu & Toplu Analiz |
+|:---:|:---:|:---:|:---:|
+| <img src="assets/osint.png" width="250" alt="OSINT"> | <img src="assets/ai_summary.png" width="250" alt="AI Summary"> | <img src="assets/spl.png" width="250" alt="Splunk SPL"> | <img src="assets/report.png" width="250" alt="Page Scanner"> |
 
 ---
 
