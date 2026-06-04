@@ -1191,6 +1191,31 @@ function _renderCveData(data) {
         html += `</ul>`;
     }
 
+    // Cortex XDR Entegrasyonu
+    const cveId = escapeHtml(data.cve_id || '');
+    const xqlQuery = `dataset = va_cves | filter name = "${cveId}" | fields affected_hosts_count`;
+    
+    html += `<div class="soc-cve-section-title" style="margin-top:20px; display:flex; align-items:center; gap:8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="#00cec9" stroke-width="2" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+        Cortex XDR Tehdit Avı
+    </div>`;
+    html += `
+        <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <code id="soc-xdr-query-code" style="color:#00cec9; font-family:monospace; font-size:13px; word-break:break-all; outline:none;">${xqlQuery}</code>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px;">
+            <button id="soc-xdr-run-btn" style="background:#00cec9; color:#0f172a; border:none; border-radius:6px; padding:6px 14px; font-weight:600; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:opacity 0.2s;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Çalıştır
+            </button>
+            <button id="soc-xdr-edit-btn" style="background:transparent; color:#94a3b8; border:1px solid #334155; border-radius:6px; padding:6px 14px; font-weight:500; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                Düzenle
+            </button>
+        </div>
+        <div id="soc-xdr-result" style="font-size:13px; font-weight:500; margin-bottom:16px;"></div>
+    `;
+
     // Meta Bilgi
     html += `<div class="soc-cve-meta">`;
     if (data.published) {
@@ -1200,6 +1225,72 @@ function _renderCveData(data) {
     html += `</div>`;
 
     body.innerHTML = html;
+
+    // XDR Run Button Dinleyicisi
+    const runBtn = document.getElementById('soc-xdr-run-btn');
+    const editBtn = document.getElementById('soc-xdr-edit-btn');
+    const codeBlock = document.getElementById('soc-xdr-query-code');
+    const resultDiv = document.getElementById('soc-xdr-result');
+    
+    if (editBtn && codeBlock) {
+        editBtn.addEventListener('click', () => {
+            const isEditable = codeBlock.getAttribute('contenteditable') === 'true';
+            if (isEditable) {
+                // Kaydet modu
+                codeBlock.setAttribute('contenteditable', 'false');
+                codeBlock.style.background = 'transparent';
+                editBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Düzenle
+                `;
+            } else {
+                // Düzenle modu
+                codeBlock.setAttribute('contenteditable', 'true');
+                codeBlock.style.background = '#1e293b'; // biraz daha açık bir ton
+                codeBlock.focus();
+                editBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    Kaydet
+                `;
+            }
+        });
+    }
+
+    if (runBtn) {
+        runBtn.addEventListener('click', () => {
+            const currentQuery = codeBlock ? codeBlock.innerText : xqlQuery;
+            runBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                XDR Sorgulanıyor...
+            `;
+            runBtn.disabled = true;
+            runBtn.style.opacity = "0.7";
+            resultDiv.innerHTML = "";
+
+            safeSendMessage({ action: "execute_xdr", query: currentQuery }, function(response) {
+                runBtn.disabled = false;
+                runBtn.style.opacity = "1";
+                runBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Çalıştır
+                `;
+
+                if (!response || response.status === "error") {
+                    resultDiv.style.color = "#f87171"; // Red
+                    resultDiv.innerHTML = `⚠️ Hata: ${escapeHtml(response?.error || 'XDR sunucusuna bağlanılamadı.')}`;
+                } else {
+                    const count = response.affected_hosts || 0;
+                    if (count > 0) {
+                        resultDiv.style.color = "#f87171"; // Red
+                        resultDiv.innerHTML = `🚨 XDR Sonucu: Ortamınızda bu zafiyetten etkilenen <b>${count}</b> adet host (varlık) tespit edildi.`;
+                    } else {
+                        resultDiv.style.color = "#4ade80"; // Green
+                        resultDiv.innerHTML = `✅ XDR Sonucu: Ortamınızda bu zafiyetten etkilenen host (varlık) bulunmamaktadır.`;
+                    }
+                }
+            });
+        });
+    }
 }
 
 /**

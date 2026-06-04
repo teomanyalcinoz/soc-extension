@@ -4,6 +4,7 @@
 const API_BASE = "http://127.0.0.1:8000/api/analyze";
 const SPLUNK_SPL_URL = "http://127.0.0.1:8000/api/splunk/generate-spl";
 const SPLUNK_EXECUTE_URL = "http://127.0.0.1:8000/api/splunk/execute";
+const XDR_EXECUTE_URL = "http://127.0.0.1:8000/api/xdr/execute";
 
 // Arama/Sorgu sonuçlarını hafızada tutmak için eklenti veritabanı değişkeni
 let latestScanResult = null;
@@ -174,8 +175,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         })
         .then(res => res.json())
         .then(data => sendResponse(data))
-        .catch(err => sendResponse({ error: err.toString() }));
-        return true;
+        .catch(err => {
+            sendResponse({ status: "error", error: err.toString() });
+        });
+        return true; // Asenkron için
+    }
+
+    // XDR Sorgusunu çalıştır
+    if (request.action === "execute_xdr") {
+        const query = request.query || "";
+        fetch(XDR_EXECUTE_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: query })
+        })
+            .then(res => {
+                if (!res.ok) throw new Error(`XDR Sunucu Hatası: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                sendResponse(data);
+            })
+            .catch(err => {
+                sendResponse({ status: "error", error: err.toString() });
+            });
+        return true; // Asenkron için
     }
     
     // CVE Detay Analizi (NIST NVD)

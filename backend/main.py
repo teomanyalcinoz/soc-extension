@@ -11,6 +11,7 @@ from services.powershell_intelligence import analyze_powershell_with_ai
 from services.spl_intelligence import generate_spl_queries
 from services.splunk_executor import execute_spl_query
 from services.report_scanner import analyze_report_text
+from services.xdr_executor import execute_xdr_query
 import re
 import urllib.parse
 import time
@@ -308,6 +309,23 @@ async def analyze_cve_endpoint(cve_id: str):
 
     return result
 
+class XDRExecuteRequest(BaseModel):
+    query: str
+
+@app.post("/api/xdr/execute")
+async def execute_xdr_endpoint(req: XDRExecuteRequest):
+    """
+    Cortex XDR üzerinde XQL sorgusu çalıştırır ve etkilenen host sayısını döndürür.
+    """
+    if not req.query:
+        raise HTTPException(status_code=400, detail="XQL sorgusu boş olamaz.")
+        
+    try:
+        from services.xdr_executor import execute_xdr_query
+        result = await execute_xdr_query(req.query)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
