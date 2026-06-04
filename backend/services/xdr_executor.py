@@ -58,10 +58,22 @@ async def execute_xdr_query(query: str) -> dict:
                 status = poll_data.get("reply", {}).get("status", "")
                 
                 if status == "SUCCESS":
-                    # Adım 3: Ayrıştırma
                     # results.data genelde dizi olarak döner
                     results_array = poll_data.get("reply", {}).get("results", {}).get("data", [])
-                    count = len(results_array)
+                    
+                    count = 0
+                    has_count_field = False
+                    for row in results_array:
+                        if isinstance(row, dict) and "affected_hosts_count" in row:
+                            has_count_field = True
+                            try:
+                                count += int(row["affected_hosts_count"])
+                            except:
+                                pass
+                                
+                    # Eğer affected_hosts_count field'ı yoksa fallback olarak array uzunluğunu kullan
+                    if not has_count_field:
+                        count = len(results_array)
                     return {
                         "status": "success",
                         "affected_hosts": count,
