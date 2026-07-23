@@ -1,0 +1,32 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Ortam değişkenleri — GCP'ye gitmemeli!
+.env
+.env.*
+
+# Test dosyaları
+test_*.py
+
+# IDE ve OS dosyaları
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker'in kendisi
+Dockerfile
+.dockerignore

@@ -56,7 +56,26 @@ Uygulama arayüzü; modern web trendlerine uygun olarak **Glassmorphism (Buzlu c
 
 ## 🚀 Kurulum ve Başlangıç
 
-### 1. Backend Kurulumu
+### 🌟 Tek Tıkla Otomatik Kurulum (Önerilen)
+
+Projeyi başka bir bilgisayarda (Windows) hızlıca ayağa kaldırmak için hazırlanan `setup_and_run.ps1` PowerShell betiğini kullanabilirsiniz. Bu betik;
+1. Python'un kurulu olup olmadığını kontrol eder.
+2. Gerekli sanal ortamı (venv) otomatik oluşturur.
+3. Bağımlılıkları (`requirements.txt`) otomatik yükler.
+4. Eksikse varsayılan bir `.env` dosyası oluşturur.
+5. Sunucuyu otomatik olarak başlatır.
+
+**Nasıl Çalıştırılır?**
+1. Proje ana dizininde sağ tıklayıp **"PowerShell'de Aç" (Open in Terminal)** seçeneğini seçin.
+2. Aşağıdaki komutu çalıştırın:
+   ```powershell
+   .\setup_and_run.ps1
+   ```
+   *(Eğer yetki hatası alırsanız PowerShell'i yönetici olarak çalıştırıp `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` komutunu girdikten sonra tekrar deneyin.)*
+
+---
+
+### 1. Backend Kurulumu (Manuel)
 
 Backend servisi FastAPI ile yazılmıştır ve OSINT API'lerine ve LLM modellerine güvenli bir şekilde bağlanır.
 

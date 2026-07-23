@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Kuveyt Türk - Tehdit İstihbaratı Raporu</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --kt-green: #006b5b;
+            --kt-light-green: #00897b;
+            --bg-color: #f0f4f8;
+            --card-bg: #f8fafc;
+            --text-dark: #1e293b;
+            --text-muted: #475569;
+            --border-color: #cbd5e1;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background: #fff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* ─── HEADER ─── */
+        header {
+            background-color: var(--kt-green);
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo svg {
+            width: 36px;
+            height: 36px;
+            fill: #c5a963; /* Kuveyt Türk Gold/Yellowish */
+        }
+        
+        .header-titles {
+            border-left: 2px solid rgba(255,255,255,0.3);
+            padding-left: 20px;
+        }
+        
+        .header-titles h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        .header-titles p {
+            margin: 3px 0 0 0;
+            font-size: 13px;
+            color: #d1fae5;
+        }
+        
+        .header-right {
+            text-align: right;
+            font-size: 12px;
+            color: #e2e8f0;
+        }
+        
+        .header-right div {
+            margin-bottom: 4px;
+        }
+
+        /* ─── CONTENT ─── */
+        .content {
+            padding: 30px;
+        }
+        
+        .section-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Subtle background pattern */
+        .section-card::before {
+            content: "";
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .section-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        
+        .section-title svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--kt-green);
+        }
+
+        /* ─── SUMMARY ─── */
+        .summary-list {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 14px;
+        }
+        .summary-list li {
+            margin-bottom: 8px;
+        }
+
+        /* ─── IOC TABLES ─── */
+        .ioc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .ioc-table-wrapper h3 {
+            margin: 0 0 10px 0;
+            font-size: 15px;
+            color: var(--text-dark);
+        }
+        
+        .ioc-table-wrapper h3 span {
+            color: var(--kt-green);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+        }
+        
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--kt-green);
+            color: #fff;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        
+        .badge {
+            background-color: #e2e8f0;
+            color: var(--text-muted);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            float: right;
+        }
+
+        /* ─── SPLUNK SECTION ─── */
+        .spl-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+        
+        .spl-box {
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: #fff;
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+        
+        .spl-header {
+            background-color: var(--kt-green);
+            color: #fff;
+            padding: 8px 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .spl-body {
+            padding: 12px 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            color: #0f172a;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background-color: #f8fafc;
+        }
+
+        /* ─── PRINT BUTTON ─── */
+        .no-print {
+            text-align: right;
+            padding: 15px 30px 0 30px;
+        }
+        
+        .print-btn {
+            background-color: var(--kt-green);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .print-btn:hover {
+            background-color: var(--kt-light-green);
+        }
+
+        @media print {
+            body {
+                background-color: #fff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .container {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button id="printBtn" class="print-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            PDF Olarak İndir
+        </button>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <div class="logo">
+                    <!-- Placeholder Tree Icon to represent Kuveyt Türk style -->
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2L8 8H10V14H6L12 22L18 14H14V8H16L12 2Z" />
+                    </svg>
+                    KUVEYT TÜRK
+                </div>
+                <div class="header-titles">
+                    <h1>TEHDİT İSTİHBARATI RAPORU</h1>
+                    <p>Otomatik Tehdit İstihbaratı ve Avcılık</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="reportDate">Tarih: --.--.---- --:--:--</div>
+                <div id="reportUrl">Kaynak: Bekleniyor...</div>
+            </div>
+        </header>
+
+        <div class="content">
+            
+            <!-- YAPAY ZEKA ÖZETİ -->
+            <div class="section-card">
+                <div class="section-content">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24"><path d="M9.5 2c-1.82 0-3.53.5-5 1.35V4a4 4 0 0 0-4 4v1.5c0 1.25.43 2.4 1.15 3.33L1 14.5V17a2 2 0 0 0 2 2h1.5l1.67-1.67C7.1 18.06 8.25 18.5 9.5 18.5h5c1.25 0 2.4-.44 3.33-1.17L19.5 19H21a2 2 0 0 0 2-2v-2.5l-.65-1.67c.72-.93 1.15-2.08 1.15-3.33V8a4 4 0 0 0-4-4v-.65A9.98 9.98 0 0 0 14.5 2h-5zm0 2h5a8 8 0 0 1 4 2.11V7a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v-.89A8 8 0 0 1 9.5 4zm-7 4a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4.5a2 2 0 0 1-2-2V8zm3 2v4h2v-4h-2zm4 0v4h2v-4h-2zm4 0v4h2v-4h-2z"/></svg>
+                        YAPAY ZEKA ANALİZ ÖZETİ
+                    </h2>
+                    <div id="summaryBox">Yükleniyor...</div>
+                </div>
+            </div>
+
+            <!-- IOC KATEGORİLERİ -->
+            <div class="section-card">
+                <div class="section-content">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24"><path d="M3 3h18v4H3V3m0 7h18v10H3V10m2 2v6h14v-6H5z"/></svg>
+                        TESPİT EDİLEN IOC KATEGORİLERİ
+                    </h2>
+                    <div class="ioc-grid" id="iocGrid">
+                        <!-- JS Injection -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- SPLUNK -->
+            <div class="section-card">
+                <div class="section-content">
+                    <h2 class="section-title" style="color: var(--kt-green);">
+                        <svg viewBox="0 0 24 24"><path d="M10 4L8 8H12L10 14H14L16 10H12L14 4H10M2 20V22H22V20H2Z"/></svg>
+                        > SPLUNK (SPL) TEHDİT AVCILIĞI
+                    </h2>
+                    <div class="spl-subtitle">Otomatik Tehdit İstihbaratı ve Avcılık Sorguları</div>
+                    <div id="splSection">
+                        <!-- JS Injection -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="report_export.js"></script>
+</body>
+</html>

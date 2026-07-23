@@ -1,0 +1,19 @@
+﻿SOC-EXTENSION Offline Bundle
+=============================
+Surum       : 20260722-121811
+Olusturulma : 2026-07-22 12:18:20
+Build Host  : DESKTOP-PER9E1O
+Python      : 3.11
+Docker      : KULLANILMIYOR (wheel/venv tabani)
+
+Icerik:
+  wheels\                  - Python .whl bagimlilik dosyalari (26 adet)
+  source\backend\          - FastAPI kaynak kodu (.env haric)
+  frontend\                - Chrome Extension dosyalari
+  config\.env.template     - Ortam degiskenleri sablonu
+  scripts\03_deploy_no_docker.sh - Offline kurulum betigi
+
+Kurulum icin:
+  1. Bu arsivi offline sunucuya tasiyin
+  2. tar -xzf *.tar.gz  (veya zip'i acin)
+  3. sudo bash scripts/03_deploy_no_docker.sh

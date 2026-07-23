@@ -1,0 +1,72 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  SOC-EXTENSION — Offline Docker Compose Konfigürasyonu
+#  Bu dosya internet bağlantısı olmadan çalışmak üzere tasarlanmıştır.
+#  image: soc-backend:offline → docker load ile yüklenmiş yerel image
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  soc-backend:
+    image: soc-backend:offline          # Yerel olarak yüklenen image (docker load)
+    container_name: soc-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - soc_logs:/app/logs
+      - ./backend:/app/src:ro           # Kaynak kodu read-only mount (opsiyonel)
+    networks:
+      - soc_internal
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # Kaynak kısıtlamaları (üretim ortamı önerileri)
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+        reservations:
+          memory: 128m
+
+  # ── Opsiyonel: Nginx Reverse Proxy ──────────────────────────────────────────
+  # nginx:
+  #   image: nginx:stable-alpine        # Ayrı bir nginx.tar.gz gerektirir
+  #   container_name: soc-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/certs:/etc/nginx/certs:ro
+  #   depends_on:
+  #     - soc-backend
+  #   networks:
+  #     - soc_internal
+
+volumes:
+  soc_logs:
+    driver: local
+
+networks:
+  soc_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
