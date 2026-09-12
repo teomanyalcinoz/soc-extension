@@ -1,10 +1,29 @@
 // Background Service Worker
 
-// Asıl güvenlik analizi API'miz (Yerel FastAPI Sunucusu)
-const API_BASE = "http://127.0.0.1:8000/api/analyze";
-const SPLUNK_SPL_URL = "http://127.0.0.1:8000/api/splunk/generate-spl";
-const SPLUNK_EXECUTE_URL = "http://127.0.0.1:8000/api/splunk/execute";
-const XDR_EXECUTE_URL = "http://127.0.0.1:8000/api/xdr/execute";
+// API Sunucu Adresi (Local test: 127.0.0.1:8000 | Canlı Sunucu: 10.14.7.20:8000)
+let SERVER_HOST = "http://127.0.0.1:8000";
+let API_BASE = `${SERVER_HOST}/api/analyze`;
+let SPLUNK_SPL_URL = `${SERVER_HOST}/api/splunk/generate-spl`;
+let SPLUNK_EXECUTE_URL = `${SERVER_HOST}/api/splunk/execute`;
+let XDR_EXECUTE_URL = `${SERVER_HOST}/api/xdr/execute`;
+
+function updateServerHost(host) {
+    SERVER_HOST = host;
+    API_BASE = `${SERVER_HOST}/api/analyze`;
+    SPLUNK_SPL_URL = `${SERVER_HOST}/api/splunk/generate-spl`;
+    SPLUNK_EXECUTE_URL = `${SERVER_HOST}/api/splunk/execute`;
+    XDR_EXECUTE_URL = `${SERVER_HOST}/api/xdr/execute`;
+}
+
+// Storage'da özel sunucu adresi kayıtlıysa onu kullan
+chrome.storage.local.get(["server_host"], (res) => {
+    if (res.server_host) {
+        updateServerHost(res.server_host);
+        console.log("TracePoint API Sunucusu (Storage):", res.server_host);
+    } else {
+        console.log("TracePoint API Sunucusu (Default):", SERVER_HOST);
+    }
+});
 
 // Arama/Sorgu sonuçlarını hafızada tutmak için eklenti veritabanı değişkeni
 let latestScanResult = null;
@@ -26,6 +45,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         else if (type === "ipv4") endpoint = `${API_BASE}/ip/${val}`;
         else if (type === "url") endpoint = `${API_BASE}/url/${encodeURIComponent(val)}`;
         else if (type === "email") endpoint = `${API_BASE}/email/${encodeURIComponent(val)}`;
+        else if (type === "domain") endpoint = `${API_BASE}/domain/${encodeURIComponent(val)}`;
         else if (type === "powershell") {
             endpoint = `${API_BASE}/powershell/`;
             fetchOptions = {

@@ -11,7 +11,7 @@ const chartCard = document.getElementById('chartCard');
 let threatChartInstance = null;
 
 // Backend sunucu adresi
-const API_BASE_URL = 'http://127.0.0.0:8000'; // Wait, standard runs on 127.0.0.1. Will fix below.
+const API_BASE_URL = 'http://10.14.7.20:8000';
 
 // Sabitler
 const MD5_REGEX = /^[a-fA-F0-9]{32}$/;

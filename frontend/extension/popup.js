@@ -1,9 +1,53 @@
+// ══════════════════════════════════════════════════════════════════
+// TracePoint v2.0 — Popup JS
+// ══════════════════════════════════════════════════════════════════
+
+const SUN_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+const MOON_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
+function applyPopupTheme(theme) {
+    const btn = document.getElementById('themeToggleBtn');
+    if (theme === 'light') {
+        document.body.classList.add('light-theme');
+        if (btn) {
+            btn.innerHTML = MOON_ICON;
+            btn.title = "Koyu Moda Geç";
+        }
+    } else {
+        document.body.classList.remove('light-theme');
+        if (btn) {
+            btn.innerHTML = SUN_ICON;
+            btn.title = "Açık Moda Geç";
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Tema Tercihini Yükle
+    chrome.storage.local.get(['tracepoint_theme'], (res) => {
+        applyPopupTheme(res.tracepoint_theme || 'dark');
+    });
+
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const isCurrentlyLight = document.body.classList.contains('light-theme');
+            const newTheme = isCurrentlyLight ? 'dark' : 'light';
+            applyPopupTheme(newTheme);
+            chrome.storage.local.set({ tracepoint_theme: newTheme });
+        });
+    }
+
+    // Storage Değişikliklerini Dinle (diğer ekranda değişirse anında güncelle)
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.tracepoint_theme) {
+            applyPopupTheme(changes.tracepoint_theme.newValue);
+        }
+    });
+
     fetchLatestResult();
 
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-        fetchLatestResult();
-    });
+    document.getElementById('refreshBtn').addEventListener('click', fetchLatestResult);
 
     const scanReportBtn = document.getElementById('scanReportBtn');
     if (scanReportBtn) {
@@ -11,216 +55,306 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 if (tabs[0]) {
                     chrome.tabs.sendMessage(tabs[0].id, { action: "start_report_scan_from_page" });
-                    window.close(); // Popup'ı kapatıp sayfa içi paneli görebilmek için
+                    window.close();
                 }
             });
         });
     }
+    // AI Summary Akordiyon Toggle
+    const aiBoxHeader = document.getElementById('aiBoxHeader');
+    if (aiBoxHeader) {
+        aiBoxHeader.addEventListener('click', () => {
+            const aiBox = document.getElementById('aiBox');
+            const aiBoxBody = document.getElementById('aiBoxBody');
+            if (aiBoxBody) {
+                const isOpen = aiBoxBody.style.display !== 'none';
+                aiBoxBody.style.display = isOpen ? 'none' : 'block';
+                if (aiBox) aiBox.classList.toggle('is-collapsed', isOpen);
+            }
+        });
+    }
+
+    // Splunk Panel Akordiyon Toggle
+    const splunkPanelHeader = document.getElementById('splunkPanelHeader');
+    if (splunkPanelHeader) {
+        splunkPanelHeader.addEventListener('click', () => {
+            const queriesList = document.getElementById('splunkQueriesList');
+            if (queriesList) {
+                const isOpen = queriesList.style.display !== 'none';
+                queriesList.style.display = isOpen ? 'none' : 'block';
+                splunkPanelHeader.classList.toggle('is-open', !isOpen);
+            }
+        });
+    }
 });
 
-// Arka plandan (background.js) saklanan dinlenmiş son veriyi çeker
 function fetchLatestResult() {
     chrome.runtime.sendMessage({ action: "get_latest_result" }, (response) => {
         renderUI(response);
     });
 }
 
-// Service worker canlı veri döndürdüğünde Popup'u günceller (Push Notification-like)
+// Background'dan gelen push güncellemelerini dinle
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "update_popup") {
-        renderUI(request.result);
-    }
-    // SPL sorguları hazır olunca paneli güncelle
-    if (request.action === "spl_ready") {
-        renderSplunkPanel(request.result ? request.result.splData : null);
-    }
+    if (request.action === "update_popup") renderUI(request.result);
+    if (request.action === "spl_ready") renderSplunkPanel(request.result?.splData || null);
 });
 
 
+// ══════════════════════════════════════════════════════════════════
+// ANA UI RENDER FONKSİYONU
+// ══════════════════════════════════════════════════════════════════
 function renderUI(result) {
-    const msgEmpty = document.getElementById('msgEmpty');
-    const msgLoading = document.getElementById('msgLoading');
+    const msgEmpty      = document.getElementById('msgEmpty');
+    const msgLoading    = document.getElementById('msgLoading');
     const resultsWrapper = document.getElementById('resultsWrapper');
 
-    // UI'ı Sıfırla
     if (!result) {
-        msgEmpty.style.display = 'block';
-        msgLoading.style.display = 'none';
+        msgEmpty.style.display      = 'block';
+        msgLoading.style.display    = 'none';
         resultsWrapper.style.display = 'none';
         return;
     }
 
-    // Hedef Paneli Güncelle
-    document.getElementById('targetValue').textContent = result.value || "Bilinmiyor";
-    const typeBadge = document.getElementById('typeBadge');
-    typeBadge.textContent = (result.type || "TARGET").toUpperCase();
+    document.getElementById('targetValue').textContent = result.value || 'Bilinmiyor';
+    document.getElementById('typeBadge').textContent   = (result.type || 'TARGET').toUpperCase();
 
-    if (result.status === "loading") {
-        msgEmpty.style.display = 'none';
-        msgLoading.style.display = 'block';
+    if (result.status === 'loading') {
+        msgEmpty.style.display      = 'none';
+        msgLoading.style.display    = 'block';
         resultsWrapper.style.display = 'none';
         return;
     }
 
-    // Başarılı Analiz (API Yanıt Bitti)
-    if (result.status === "success") {
-        msgEmpty.style.display = 'none';
-        msgLoading.style.display = 'none';
+    if (result.status === 'success') {
+        msgEmpty.style.display      = 'none';
+        msgLoading.style.display    = 'none';
         resultsWrapper.style.display = 'block';
 
-        const rawData = result.rawData; // Backend'den dönen data
+        // AI özetini varsayılan olarak açık (okunur) getir
+        const aiBox = document.getElementById('aiBox');
+        const aiBoxBody = document.getElementById('aiBoxBody');
+        if (aiBox) aiBox.classList.remove('is-collapsed');
+        if (aiBoxBody) aiBoxBody.style.display = 'block';
 
-        // RAPOR TARAMA (Yeni Özellik)
+        const rawData = result.rawData;
+
+        // ── RAPOR TARAMA MODU ────────────────────────────────────
         if (result.type === 'report') {
-            const aiSummaryBox = document.getElementById('aiSummaryBox');
-            aiSummaryBox.innerHTML = rawData.summary || "Özet çıkarılamadı.";
-            
+            // v2 elemanlarını gizle
+            document.getElementById('verdictBar').style.display        = 'none';
+            const acc = document.getElementById('sourcesAccordion');
+            acc.innerHTML = '';
+            acc.style.display = 'none';
+
+            document.getElementById('aiSummaryBox').innerHTML = rawData.summary || 'Özet çıkarılamadı.';
+
             const sourcesList = document.getElementById('sourcesList');
-            sourcesList.innerHTML = `<h4 style="margin-bottom:8px; color:#cbd5e1; font-size:12px;">Çıkarılan IOC'ler (${rawData.total_iocs_found || 0})</h4>`;
-            
-            if (rawData.iocs && rawData.iocs.length > 0) {
-                rawData.iocs.forEach(ioc => {
-                    const statusColor = ioc.status === "Malicious" ? "#ef4444" : (ioc.status === "Suspicious" ? "#f59e0b" : (ioc.status === "Error" ? "#94a3b8" : "#10b981"));
-                    
+            sourcesList.style.display = 'block';
+            sourcesList.innerHTML     = `<h4 class="report-section-title">Çıkarılan IOC Kategorileri (${rawData.total_iocs_found || 0} Adet)</h4>`;
+
+            const hasGrouped = rawData.grouped_iocs && rawData.grouped_iocs.length > 0;
+            const hasFlat    = rawData.iocs && rawData.iocs.length > 0;
+
+            if (hasGrouped) {
+                rawData.grouped_iocs.forEach((group, index) => {
+                    const gId = `popup-report-group-${index}`;
+                    const t   = (group.type || 'IOC').toUpperCase();
+                    const cnt = group.count || (group.values ? group.values.length : 0);
+
                     const card = document.createElement('div');
-                    card.className = 'src-card';
-                    card.style.flexDirection = 'column';
-                    card.style.alignItems = 'flex-start';
-                    card.style.gap = '8px';
-                    
-                    let splHtml = '';
-                    if (ioc.spl_queries && ioc.spl_queries.length > 0) {
-                        splHtml = `<div style="margin-top:6px; width:100%;"><strong style="font-size:10px; color:#6366f1;">Splunk Sorguları:</strong><div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">`;
-                        ioc.spl_queries.forEach(q => {
-                            splHtml += `<div style="background:#0f172a; padding:4px 6px; border-radius:4px; font-family:monospace; font-size:10px; color:#a5b4fc; word-break:break-all;">[${q.index}] ${escapeHtml(q.query)}</div>`;
-                        });
-                        splHtml += `</div></div>`;
-                    }
-                    
+                    card.className = 'src-card report-group-card';
+                    card.style.cssText = 'padding:0; margin-bottom:8px; overflow:hidden; border-radius:8px; display:block;';
+
+                    // Kategori Butonu
+                    const btn = document.createElement('button');
+                    btn.className = 'report-accordion-btn';
+                    btn.innerHTML = `
+                        <span style="display:flex; align-items:center; gap:8px;">
+                            <span class="badge report-type-badge">${escapeHtml(t)}</span>
+                            <span class="report-count-label">(${cnt} Adet)</span>
+                        </span>
+                        <span class="acc-chevron" style="color:#6366f1; transition:transform 0.2s; font-size:11px;">▼</span>
+                    `;
+
+                    // Kategori İçeriği (Varsayılan kapalı)
+                    const body = document.createElement('div');
+                    body.id = gId;
+                    body.className = 'report-accordion-body';
+                    body.style.display = 'none';
+
+                    let valuesHtml = `<div class="report-values-grid">`;
+                    (group.values || []).forEach(v => {
+                        valuesHtml += `<span class="report-ioc-pill" title="${escapeHtml(v)}">${escapeHtml(v)}</span>`;
+                    });
+                    valuesHtml += `</div>`;
+
+                    const splContainer = document.createElement('div');
+                    splContainer.id = `spl-container-${gId}`;
+                    splContainer.className = 'report-spl-container';
+
+                    body.innerHTML = valuesHtml;
+                    body.appendChild(splContainer);
+
+                    let splLoaded = false;
+                    btn.addEventListener('click', () => {
+                        const isExpanded = body.style.display === 'block';
+                        body.style.display = isExpanded ? 'none' : 'block';
+                        btn.classList.toggle('is-expanded', !isExpanded);
+                        const chevron = btn.querySelector('.acc-chevron');
+                        if (chevron) chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+
+                        // SPL sorgularını lazy-load ile getir
+                        if (!isExpanded && !splLoaded) {
+                            splLoaded = true;
+                            splContainer.innerHTML = `<div class="report-spl-loading"><span class="splunk-spinner"></span> SPL Sorguları üretiliyor...</div>`;
+                            chrome.runtime.sendMessage({
+                                action: "fetch_report_spl",
+                                iocType: group.type,
+                                values: group.values
+                            }, (response) => {
+                                if (response && response.queries && response.queries.length > 0) {
+                                    let splHtml = `<div class="report-spl-wrapper"><strong class="report-spl-header">Toplu Splunk Sorguları (${response.queries.length}):</strong><div class="report-spl-list">`;
+                                    response.queries.forEach(q => {
+                                        splHtml += `
+                                            <div class="report-spl-item">
+                                                <div class="report-spl-label">[${escapeHtml(q.index || 'Index')}] ${escapeHtml(q.label || '')}</div>
+                                                <div class="report-spl-query">${escapeHtml(q.query)}</div>
+                                            </div>`;
+                                    });
+                                    splHtml += `</div></div>`;
+                                    splContainer.innerHTML = splHtml;
+                                } else {
+                                    splContainer.innerHTML = `<div class="report-spl-empty">Bu kategori için özel SPL sorgusu bulunamadı.</div>`;
+                                }
+                            });
+                        }
+                    });
+
+                    card.appendChild(btn);
+                    card.appendChild(body);
+                    sourcesList.appendChild(card);
+                });
+
+                // PDF İndir Butonu
+                const pdfBtn = document.createElement('button');
+                pdfBtn.className = 'refresh-btn';
+                pdfBtn.style.cssText = 'margin-top:15px;background:#10b981;color:#fff;width:100%;';
+                pdfBtn.innerText = '📄 PDF Raporu İndir';
+                pdfBtn.addEventListener('click', () => {
+                    chrome.storage.local.set(
+                        { reportData: rawData, reportUrl: document.getElementById('targetValue').textContent },
+                        () => { chrome.tabs.create({ url: chrome.runtime.getURL('report_export.html') }); }
+                    );
+                });
+                sourcesList.appendChild(pdfBtn);
+
+            } else if (hasFlat) {
+                // Flat iocs listesi (fallback)
+                rawData.iocs.forEach(ioc => {
+                    const statusColor = ioc.status === 'Malicious' ? '#ef4444'
+                        : ioc.status === 'Suspicious' ? '#f59e0b'
+                        : ioc.status === 'Error'      ? '#94a3b8'
+                        : '#10b981';
+
+                    const card = document.createElement('div');
+                    card.className = 'src-card report-flat-card';
+                    card.style.cssText = 'flex-direction:column;align-items:flex-start;gap:8px;';
+
                     card.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
                             <div>
-                                <span class="badge" style="background:#334155;">${ioc.type.toUpperCase()}</span>
-                                <span style="font-family:monospace; color:#e2e8f0; margin-left:6px; word-break:break-all; font-size:11px;">${escapeHtml(ioc.value)}</span>
+                                <span class="badge report-type-badge">${(ioc.type || 'IOC').toUpperCase()}</span>
+                                <span class="report-ioc-flat-value">${escapeHtml(ioc.value)}</span>
                             </div>
-                            <span style="font-size:10px; font-weight:bold; color:${statusColor};">${ioc.status}</span>
+                            <span style="font-size:10px;font-weight:bold;color:${statusColor};">${ioc.status || 'Clean'}</span>
                         </div>
-                        ${splHtml}
                     `;
                     sourcesList.appendChild(card);
                 });
-                
-                // PDF İndir butonu
-                const pdfBtn = document.createElement('button');
-                pdfBtn.className = 'refresh-btn';
-                pdfBtn.style.marginTop = '15px';
-                pdfBtn.style.backgroundColor = '#10b981';
-                pdfBtn.style.color = '#fff';
-                pdfBtn.style.width = '100%';
-                pdfBtn.innerText = '📄 PDF Raporu İndir';
-                pdfBtn.addEventListener('click', () => {
-                    chrome.storage.local.set({ reportData: rawData, reportUrl: document.getElementById('targetValue').textContent }, () => {
-                        chrome.tabs.create({ url: chrome.runtime.getURL('report_export.html') });
-                    });
-                });
-                sourcesList.appendChild(pdfBtn);
             } else {
                 sourcesList.innerHTML += '<div class="src-card"><span class="src-text">IOC bulunamadı.</span></div>';
             }
-            
-            // Splunk panelini gizle (çünkü her IOC içinde gösteriyoruz)
+
             const splunkPanel = document.getElementById('splunkPanel');
             if (splunkPanel) splunkPanel.style.display = 'none';
             return;
         }
 
-        // STANDART OSINT TARAMASI (Tekil)
-        // 1. AI Summary
-        const aiSummaryBox = document.getElementById('aiSummaryBox');
-        if (rawData.ai_summary) {
-            aiSummaryBox.innerHTML = rawData.ai_summary;
-        } else {
-            aiSummaryBox.innerHTML = "AI modeli şu anda bu hedefin özetini çıkartamadı.";
-        }
+        // ── STANDART OSINT MODU ───────────────────────────────────
+        document.getElementById('sourcesList').innerHTML   = '';
+        document.getElementById('sourcesList').style.display = 'none';
 
-        // 2. Çapraz Sorgu Kartları
-        const sourcesList = document.getElementById('sourcesList');
-        sourcesList.innerHTML = ''; // Temizle
+        // 1. AI Özeti
+        document.getElementById('aiSummaryBox').innerHTML =
+            rawData.ai_summary || 'AI modeli şu anda bu hedefin özetini çıkartamadı.';
+
+        const verdictBar       = document.getElementById('verdictBar');
+        const accordionContainer = document.getElementById('sourcesAccordion');
 
         if (rawData.results && rawData.results.length > 0) {
-            rawData.results.forEach(res => {
-                const card = buildSourceCard(res);
-                if (card) {
-                    sourcesList.appendChild(card);
-                }
-            });
+            // 2. Verdict Pill Bar
+            verdictBar.innerHTML    = buildVerdictBarHtml(rawData.results);
+            verdictBar.style.display = 'flex';
+
+            // 3. Sources Accordion
+            accordionContainer.innerHTML = '';
+            accordionContainer.appendChild(buildSourcesAccordion(rawData.results));
+            accordionContainer.style.display = 'block';
         } else {
-            sourcesList.innerHTML = '<div class="src-card"><span class="src-text">Hiçbir entegrasyonda sonuç bulunamadı.</span></div>';
+            verdictBar.style.display = 'none';
+            accordionContainer.innerHTML = '<div class="src-card"><span class="src-text">Hiçbir entegrasyonda sonuç bulunamadı.</span></div>';
+            accordionContainer.style.display = 'block';
         }
 
-        // 3. Splunk SPL Paneli
+        // 4. Splunk SPL Paneli
         const splunkPanel = document.getElementById('splunkPanel');
         if (splunkPanel) {
             splunkPanel.style.display = 'block';
-            // SPL verisi hazırsa render et, yoksa loading göster
             renderSplunkPanel(result.splData || null);
         }
 
-    } else if (result.status === "error") {
-        msgEmpty.style.display = 'block';
-        msgLoading.style.display = 'none';
+    } else if (result.status === 'error') {
+        msgEmpty.style.display      = 'block';
+        msgLoading.style.display    = 'none';
         resultsWrapper.style.display = 'none';
-        
-        let errorMsg = result.error;
-        if (!errorMsg && result.rawData && result.rawData.message) {
-            errorMsg = result.rawData.message;
-        }
-        
+        const errorMsg = result.error || result.rawData?.message || 'Bilinmeyen hata';
         msgEmpty.innerHTML = `<span style="color:var(--accent-red)">⛔ Sunucu Hatası:</span><br><br>${errorMsg}`;
     }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// SPLUNK SPL PANELİ RENDER FONKSİYONLARI
-// ─────────────────────────────────────────────────────────────────
 
-/**
- * splData: { queries: [...], ioc_value, ioc_type } veya null (yükleniyor)
- */
+// ══════════════════════════════════════════════════════════════════
+// SPLUNK PANELİ (Akordiyon & Kompakt Sorgu Kartları)
+// ══════════════════════════════════════════════════════════════════
 function renderSplunkPanel(splData) {
     const loadingBadge = document.getElementById('splunkLoadingBadge');
     const readyBadge   = document.getElementById('splunkReadyBadge');
     const queriesList  = document.getElementById('splunkQueriesList');
-
     if (!loadingBadge || !readyBadge || !queriesList) return;
 
-    // SPL henüz gelmedi → loading state
     if (!splData) {
         loadingBadge.style.display = 'flex';
         readyBadge.style.display   = 'none';
         queriesList.innerHTML = '';
         return;
     }
-
-    // Hata durumu
     if (splData.error && (!splData.queries || splData.queries.length === 0)) {
         loadingBadge.style.display = 'none';
         readyBadge.style.display   = 'none';
-        queriesList.innerHTML = `<div class="spl-empty-msg">⚠️ SPL üretilemedi: ${splData.error}</div>`;
+        queriesList.innerHTML = `<div class="spl-empty-msg" style="padding:10px; color:#f87171; font-size:11px;">⚠️ SPL üretilemedi: ${splData.error}</div>`;
         return;
     }
-
-    // Sorgular hazır
     loadingBadge.style.display = 'none';
     readyBadge.style.display   = 'inline-block';
     queriesList.innerHTML = '';
-
     const queries = splData.queries || [];
+    readyBadge.textContent = `✓ Hazır (${queries.length})`;
+
     if (queries.length === 0) {
-        queriesList.innerHTML = '<div class="spl-empty-msg">Bu IOC tipi için Splunk sorgusu bulunamadı.</div>';
+        queriesList.innerHTML = '<div class="spl-empty-msg" style="padding:10px; color:#94a3b8; font-size:11px;">Bu IOC tipi için Splunk sorgusu bulunamadı.</div>';
         return;
     }
-
     queries.forEach(q => {
         const card = buildSplCard(q);
         if (card) queriesList.appendChild(card);
@@ -230,56 +364,82 @@ function renderSplunkPanel(splData) {
 function buildSplCard(q) {
     const div = document.createElement('div');
     div.className = 'spl-card';
+    div.style.cssText = 'background:rgba(15,23,42,0.5); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:10px 12px; margin-bottom:8px; transition:all 0.2s;';
 
-    const color = q.color || '#6366f1';
-    const label = q.label || q.index || 'Index';
+    const color       = q.color || '#6366f1';
+    const label       = q.label || q.index || 'Index';
     const description = q.description || '';
-    let currentQuery = q.query || '';
-    const note  = q.note || null;
+    let currentQuery  = q.query || '';
+    const note        = q.note || null;
 
-    // Benzersiz ID'ler
-    const uid = `spl-${q.index}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-    const copyBtnId = `${uid}-copy`;
-    const runBtnId  = `${uid}-run`;
-    const editBtnId = `${uid}-edit`;
+    const uid        = `spl-${q.index}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const copyBtnId  = `${uid}-copy`;
+    const runBtnId   = `${uid}-run`;
+    const editBtnId  = `${uid}-edit`;
     const queryPreId = `${uid}-pre`;
-    const resultsId = `${uid}-results`;
+    const resultsId  = `${uid}-results`;
+    const bodyId     = `${uid}-body`;
+    const chevronId  = `${uid}-chevron`;
 
     div.innerHTML = `
-        <div class="spl-card-header">
-            <div style="display:flex; align-items:center;">
-                <span class="spl-index-title">${q.index || 'index'}</span>
-                <span class="spl-status-badge" style="border: 1px solid ${color}; color: ${color}; background: ${color}15;">${q.label || 'Active'}</span>
+        <div class="spl-card-header" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span class="spl-index-title" style="font-size:12px; font-weight:700; text-transform:uppercase;">${escapeHtml(q.index || 'index')}</span>
+                <span class="spl-status-badge" style="font-size:9.5px; border:1px solid ${color}; color:${color}; background:${color}15; padding:2px 7px; border-radius:10px; font-weight:700;">${escapeHtml(label)}</span>
             </div>
-            <div style="display:flex; gap:12px; align-items:center;">
-                <button class="spl-edit-btn" id="${editBtnId}" title="SPL sorgusunu düzenle">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button class="spl-edit-btn" id="${editBtnId}" title="SPL sorgusunu düzenle" style="padding:3px 6px; font-size:10px;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     Düzenle
                 </button>
-                <button class="spl-run-btn" id="${runBtnId}" title="Splunk'ta çalıştır">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <button class="spl-run-btn" id="${runBtnId}" title="Splunk'ta çalıştır" style="padding:3px 6px; font-size:10px;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Çalıştır
                 </button>
-                <button class="spl-copy-btn" id="${copyBtnId}" title="SPL sorgusunu kopyala">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <button class="spl-copy-btn" id="${copyBtnId}" title="SPL sorgusunu kopyala" style="padding:3px 6px; font-size:10px;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     Kopyala
                 </button>
+                <svg id="${chevronId}" class="spl-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s; margin-left:4px;">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
             </div>
         </div>
-        <div class="spl-description">${label} — ${description}</div>
-        <pre class="spl-query-code" id="${queryPreId}">${escapeHtml(currentQuery)}</pre>
-        ${note ? `<div class="spl-note">⚠️ ${note}</div>` : ''}
-        <div id="${resultsId}" style="display:none;"></div>
+        <div id="${bodyId}" class="spl-card-body" style="display:none; margin-top:10px; padding-top:8px;">
+            ${description ? `<div class="spl-description" style="display:block; font-size:10px; margin-bottom:6px;">${escapeHtml(description)}</div>` : ''}
+            <pre class="spl-query-code" id="${queryPreId}" style="margin-bottom:6px; font-size:10px;">${escapeHtml(currentQuery)}</pre>
+            ${note ? `<div class="spl-note" style="font-size:10px; color:#f59e0b; margin-bottom:6px;">⚠️ ${escapeHtml(note)}</div>` : ''}
+            <div id="${resultsId}" style="display:none;"></div>
+        </div>
     `;
 
-    // ── Düzenle butonu ────────────────────────────────────────────
+    const cardHeader = div.querySelector('.spl-card-header');
+    const cardBody   = div.querySelector(`#${bodyId}`);
+    const cardChev   = div.querySelector(`#${chevronId}`);
+
+    // Kart akordiyon açma/kapatma (header tıklanınca)
+    cardHeader.addEventListener('click', () => {
+        const isOpen = cardBody.style.display !== 'none';
+        cardBody.style.display = isOpen ? 'none' : 'block';
+        if (cardChev) cardChev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    });
+
+    const openCardBody = () => {
+        if (cardBody.style.display === 'none') {
+            cardBody.style.display = 'block';
+            if (cardChev) cardChev.style.transform = 'rotate(180deg)';
+        }
+    };
+
+    // Düzenle
     const editBtn = div.querySelector(`#${editBtnId}`);
     if (editBtn) {
-        const editHandler = () => {
+        const editHandler = (e) => {
+            e.stopPropagation();
+            openCardBody();
+
             const preEl = div.querySelector(`#${queryPreId}`);
             if (!preEl) return;
-
-            // <pre> → <textarea> dönüşümü
             const textarea = document.createElement('textarea');
             textarea.id = queryPreId;
             textarea.className = 'spl-query-editor';
@@ -287,42 +447,38 @@ function buildSplCard(q) {
             textarea.spellcheck = false;
             preEl.replaceWith(textarea);
             textarea.focus();
-
-            editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Kaydet';
+            editBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Kaydet';
             editBtn.classList.add('editing');
-
-            // Kaydet handler
-            const saveHandler = () => {
+            const saveHandler = (e2) => {
+                e2.stopPropagation();
                 currentQuery = textarea.value;
                 const newPre = document.createElement('pre');
                 newPre.id = queryPreId;
                 newPre.className = 'spl-query-code';
+                newPre.style.fontSize = '10px';
                 newPre.textContent = currentQuery;
                 textarea.replaceWith(newPre);
-
-                editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Düzenle';
+                editBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Düzenle';
                 editBtn.classList.remove('editing');
-                
                 editBtn.removeEventListener('click', saveHandler);
                 editBtn.addEventListener('click', editHandler);
             };
-
             editBtn.removeEventListener('click', editHandler);
             editBtn.addEventListener('click', saveHandler);
         };
         editBtn.addEventListener('click', editHandler);
     }
 
-    // ── Kopyala butonu ────────────────────────────────────────────
+    // Kopyala
     const copyBtn = div.querySelector(`#${copyBtnId}`);
     if (copyBtn) {
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             navigator.clipboard.writeText(currentQuery).then(() => {
-                copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg> Kopyalandı';
+                copyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg> Kopyalandı';
                 copyBtn.classList.add('copied');
-                setTimeout(() => { 
-                    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Kopyala';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Kopyala';
                     copyBtn.classList.remove('copied');
                 }, 2000);
             }).catch(() => {
@@ -332,336 +488,740 @@ function buildSplCard(q) {
         });
     }
 
-    // ── Çalıştır butonu ───────────────────────────────────────────
+    // Çalıştır
     const runBtn = div.querySelector(`#${runBtnId}`);
     if (runBtn) {
-        runBtn.addEventListener('click', () => {
+        runBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openCardBody();
+
             const resultsDiv = div.querySelector(`#${resultsId}`);
             if (!resultsDiv) return;
-
             runBtn.disabled = true;
             runBtn.classList.add('running');
-            runBtn.textContent = '⏳ Çalışıyor...';
-
+            runBtn.textContent = '⏳...';
             resultsDiv.style.display = 'block';
-            resultsDiv.innerHTML = `
-                <div class="spl-results-wrapper">
-                    <div class="spl-results-loading">
-                        <div class="splunk-spinner"></div> Splunk'ta sorgulanıyor...
-                    </div>
-                </div>`;
-
-            chrome.runtime.sendMessage(
-                { action: "execute_splunk", query: currentQuery },
-                (response) => {
-                    runBtn.disabled = false;
-                    runBtn.classList.remove('running');
-                    runBtn.textContent = '⚡ Çalıştır';
-
-                    if (!response) {
-                        resultsDiv.innerHTML = `<div class="spl-results-wrapper"><div class="spl-results-error">⛔ Yanıt alınamadı.</div></div>`;
-                        return;
-                    }
-
-                    resultsDiv.innerHTML = buildSplResultsHtml(response);
+            resultsDiv.innerHTML = `<div class="spl-results-wrapper"><div class="spl-results-loading"><div class="splunk-spinner"></div> Splunk'ta sorgulanıyor...</div></div>`;
+            chrome.runtime.sendMessage({ action: "execute_splunk", query: currentQuery }, (response) => {
+                runBtn.disabled = false;
+                runBtn.classList.remove('running');
+                runBtn.textContent = '⚡ Çalıştır';
+                if (!response) {
+                    resultsDiv.innerHTML = `<div class="spl-results-wrapper"><div class="spl-results-error">⛔ Yanıt alınamadı.</div></div>`;
+                    return;
                 }
-            );
+                resultsDiv.innerHTML = buildSplResultsHtml(response);
+            });
         });
     }
-
     return div;
 }
 
-/**
- * Splunk sorgu sonuçlarını HTML'e dönüştüren yardımcı fonksiyon.
- * response = { status, message, results, result_count }
- */
 function buildSplResultsHtml(response) {
-    if (response.status === "not_configured") {
-        return `<div class="spl-results-wrapper">
-            <div class="spl-results-warn">⚠️ ${response.message}</div>
-        </div>`;
+    if (response.status === 'not_configured') {
+        return `<div class="spl-results-wrapper"><div class="spl-results-warn">⚠️ ${response.message}</div></div>`;
     }
-
-    if (response.status === "error") {
-        return `<div class="spl-results-wrapper">
-            <div class="spl-results-error">⛔ ${response.message}</div>
-        </div>`;
+    if (response.status === 'error') {
+        return `<div class="spl-results-wrapper"><div class="spl-results-error">⛔ ${response.message}</div></div>`;
     }
-
-    if (response.status === "success") {
+    if (response.status === 'success') {
         const results = response.results || [];
-
         if (results.length === 0) {
-            return `<div class="spl-results-wrapper">
-                <div class="spl-results-empty">Sorgu başarıyla çalıştırıldı ancak sonuç bulunamadı.</div>
-            </div>`;
+            return `<div class="spl-results-wrapper"><div class="spl-results-empty">Sorgu başarıyla çalıştırıldı ancak sonuç bulunamadı.</div></div>`;
         }
-
-        // Dinamik olarak tüm sütun başlıklarını çıkar (iç alanlar "_" ile başlayanları filtreleme opsiyonel)
         const allKeys = new Set();
         results.forEach(row => {
             Object.keys(row).forEach(k => {
-                // Splunk dahili alanlarını (_raw, _time hariç) gizle
-                if (!k.startsWith('_') || k === '_time' || k === '_raw') {
-                    allKeys.add(k);
-                }
+                if (!k.startsWith('_') || k === '_time' || k === '_raw') allKeys.add(k);
             });
         });
         const columns = Array.from(allKeys);
-
-        // Tablo başlıkları
-        let headerHtml = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
-        // Tablo satırları
-        let rowsHtml = results.map(row => {
+        const headerHtml = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+        const rowsHtml = results.map(row => {
             const cells = columns.map(col => `<td title="${escapeHtml(String(row[col] || ''))}">${escapeHtml(String(row[col] || '-'))}</td>`).join('');
             return `<tr>${cells}</tr>`;
         }).join('');
-
-        return `<div class="spl-results-wrapper">
-            <div class="spl-results-success-header">✅ ${response.result_count} sonuç bulundu</div>
-            <div class="spl-results-table-wrap">
-                <table class="spl-results-table">
-                    <thead><tr>${headerHtml}</tr></thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
-            </div>
-        </div>`;
+        return `<div class="spl-results-wrapper"><div class="spl-results-success-header">✅ ${response.result_count} sonuç bulundu</div><div class="spl-results-table-wrap"><table class="spl-results-table"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
     }
-
     return `<div class="spl-results-wrapper"><div class="spl-results-error">Bilinmeyen yanıt formatı.</div></div>`;
 }
 
-/** HTML escape yardımcısı */
+
+// ══════════════════════════════════════════════════════════════════
+// YARDIMCI FONKSİYONLAR
+// ══════════════════════════════════════════════════════════════════
 function escapeHtml(text) {
-    return text
+    return String(text)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 }
 
-// Basit kart oluşturucu. (Ana UI'daki parse fonksiyonlarını özet olarak replika eder)
-function buildSourceCard(res) {
-    const div = document.createElement('div');
-    div.className = 'src-card';
+function sh(text, maxLen = 100) {
+    // Safe truncated escapeHtml
+    const s = String(text || '—');
+    return escapeHtml(s.length > maxLen ? s.substring(0, maxLen) + '…' : s);
+}
 
-    const srcName = res.source; // VirusTotal, AbuseIPDB, vs..
-    let statusClass = 'st-unknown';
-    let statusText = 'Bilinmiyor';
-    let detailText = '';
-    let linksHtml = '';
 
+// ══════════════════════════════════════════════════════════════════
+// v2 — KAYNAK ETİKETLERİ
+// ══════════════════════════════════════════════════════════════════
+const SOURCE_LABELS = {
+    'VirusTotal':                  'VirusTotal',
+    'AlienVault OTX':              'OTX',
+    'AlienVault':                  'OTX',
+    'AbuseIPDB':                   'AbuseIPDB',
+    'Shodan':                      'Shodan',
+    'GreyNoise':                   'GreyNoise',
+    'IPInfo.io':                   'IPInfo',
+    'ipapi.co':                    'ipapi.co',
+    'MalwareBazaar':               'MBazaar',
+    'Hybrid Analysis':             'Hybrid',
+    'Triage':                      'Triage',
+    'Polyswarm':                   'Polyswarm',
+    'Pulsedive':                   'Pulsedive',
+    'URLhaus':                     'URLhaus',
+    'Sucuri SiteCheck':            'Sucuri',
+    'urlscan.io':                  'URLScan',
+    'USOM':                        'USOM',
+    'PhishTank':                   'PhishTank',
+    'CIRCL Hashlookup':            'CIRCL',
+    'AbstractAPI':                 'AbstractAPI',
+    'emailrep.io':                 'emailrep',
+    'HaveIBeenPwned':              'HIBP',
+    'BreachDirectory':             'BreachDir',
+    'Spamhaus':                    'Spamhaus',
+    'MX / DNS Doğrulama':          'MX/DNS',
+    'SecurityTrails':              'SecTrails',
+    'crt.sh':                      'crt.sh',
+    'RDAP':                        'RDAP',
+    'IntelX':                      'IntelX',
+};
+
+
+// ══════════════════════════════════════════════════════════════════
+// v2 — KAYNAK SINIFLANDIRMA
+// verdict: 'malicious' | 'suspicious' | 'clean' | 'unknown' | 'error'
+// metric:  chip üzerinde gösterilecek kısa metin
+// detailHtml: tıklanınca açılacak içerik
+// ══════════════════════════════════════════════════════════════════
+function classifySource(res) {
     if (!res.success) {
-        statusText = 'Hata / İzinsiz';
-        detailText = res.error || 'API sorunu yaşandı.';
-        statusClass = 'st-unknown'; // Gri kalsın
-    } else if (srcName.includes('AbuseIPDB') && res.data && res.data.data) {
-        const score = res.data.data.abuseConfidenceScore || 0;
-        const country = res.data.data.countryCode || '';
-        const isp = res.data.data.isp || '';
-        const flag = country ? `<img src="https://flagcdn.com/16x12/${country.toLowerCase()}.png" style="vertical-align: middle; margin-right: 5px;" alt="${country}">` : '';
-
-        if (score > 70) { statusClass = 'st-malicious'; statusText = 'Zararlı'; }
-        else if (score > 20) { statusClass = 'st-suspicious'; statusText = 'Şüpheli'; }
-        else { statusClass = 'st-clean'; statusText = 'Temiz'; }
-        detailText = `${flag}<strong>${isp}</strong><br><br>Güven skoru: ${score}% Zararlı (Toplam: ${res.data.data.totalReports} rapor)`;
-        linksHtml = `<a href="https://www.abuseipdb.com/check/${document.getElementById('targetValue').textContent}" target="_blank" class="soc-ext-link">AbuseIPDB'de Gör</a>`;
-    } else if (srcName.includes('VirusTotal') && res.data && res.data.data) {
-        const stats = res.data.data.attributes?.last_analysis_stats || {};
-        const mal = stats.malicious || 0;
-        if (mal > 4) { statusClass = 'st-malicious'; statusText = 'Zararlı'; }
-        else if (mal > 0 || stats.suspicious > 0) { statusClass = 'st-suspicious'; statusText = 'Şüpheli'; }
-        else { statusClass = 'st-clean'; statusText = 'Temiz'; }
-        detailText = `${mal} güvenlik motoru tarafından işaretlendi.`;
-
-        const rep = res.data.data.attributes?.reputation;
-        if (rep !== undefined) {
-            detailText += `<br><br><span style="font-size:10.5px; color:#94a3b8;">Topluluk İtibarı: <strong style="color:${rep < 0 ? '#ef4444' : (rep > 0 ? '#10b981' : '#f59e0b')}">${rep > 0 ? '+' + rep : rep}</strong></span>`;
-        }
-
-        let targetVal = document.getElementById('targetValue').textContent;
-        let tCategory = document.getElementById('typeBadge').textContent;
-        let vtLink = '';
-        if (tCategory === 'HASH') vtLink = `https://www.virustotal.com/gui/file/${targetVal}/detection`;
-        else if (tCategory === 'IPV4') vtLink = `https://www.virustotal.com/gui/ip-address/${targetVal}/detection`;
-        else if (tCategory === 'URL') vtLink = `https://www.virustotal.com/gui/search/${encodeURIComponent(targetVal)}`;
-        if (vtLink) linksHtml = `<a href="${vtLink}" target="_blank" class="soc-ext-link">VT'de Gör</a>`;
-
-    } else if (srcName.includes('AlienVault') && res.data && res.data.pulse_info) {
-        const count = res.data.pulse_info.count || 0;
-        if (count > 2) { statusClass = 'st-malicious'; statusText = 'Zararlı'; }
-        else if (count > 0) { statusClass = 'st-suspicious'; statusText = 'Şüpheli'; }
-        else { statusClass = 'st-clean'; statusText = 'Temiz'; }
-        detailText = `Topluluk tarafından ${count} pulse bulundu.`;
-        linksHtml = `<a href="https://otx.alienvault.com/indicator/${document.getElementById('typeBadge').textContent.toLowerCase() === 'url' ? 'url/' : ''}${document.getElementById('targetValue').textContent}" target="_blank" class="soc-ext-link">OTX'de Gör</a>`;
-    } else if (srcName.includes('MalwareBazaar')) {
-        if (res.data?.query_status === 'ok') {
-            statusClass = 'st-malicious'; statusText = 'Zararlı';
-            detailText = 'MalwareBazaar tehdit ağında tespit edildi.';
-        } else {
-            statusClass = 'st-unknown'; statusText = 'Bilinmiyor';
-            detailText = 'Kayıt bulunamadı.';
-        }
-    } else if (srcName.includes('Sucuri') && res.data) {
-        const blacklists = res.data.blacklists || [];
-        const warnings = res.data.warnings || [];
-        const siteInfo = res.data.site_info || {};
-        const isBlacklisted = Array.isArray(blacklists) ? blacklists.some(b => b.is_blacklisted) : false;
-
-        if (isBlacklisted) { statusClass = 'st-malicious'; statusText = 'Zararlı'; }
-        else if (warnings.length > 0) { statusClass = 'st-suspicious'; statusText = 'Şüpheli'; }
-        else { statusClass = 'st-clean'; statusText = 'Temiz'; }
-
-        detailText = isBlacklisted ? "Kara listede yer alıyor." : (warnings.length > 0 ? "Güvenlik uyarıları var." : "Temiz görünüyor.");
-
-        let extraInfo = [];
-        if (siteInfo.ip) extraInfo.push(`<b>IP:</b> ${siteInfo.ip}`);
-        if (siteInfo.server) extraInfo.push(`<b>Sunucu:</b> ${siteInfo.server}`);
-        if (siteInfo.application) extraInfo.push(`<b>CMS:</b> ${siteInfo.application}`);
-        if (extraInfo.length > 0) detailText += `<br><br><span style="font-size:10.5px; color:#e2e8f0;">${extraInfo.join(' | ')}</span>`;
-
-        linksHtml = `<a href="https://sitecheck.sucuri.net/results/${document.getElementById('targetValue').textContent}" target="_blank" class="soc-ext-link">Sucuri'de İncele</a>`;
-    } else if (srcName.includes('URLhaus') && res.data) {
-        if (res.data.query_status === 'ok' && res.data.url_status !== 'offline') {
-            statusClass = 'st-malicious'; statusText = 'Zararlı';
-            detailText = 'URLhaus ağında zararlı bağlantı olarak tespit edildi!';
-        } else if (res.data.query_status === 'ok' && res.data.url_status === 'offline') {
-            statusClass = 'st-suspicious'; statusText = 'Şüpheli';
-            detailText = 'Zararlı bağlantı (Şu an çevrimdışı).';
-        } else {
-            statusClass = 'st-clean'; statusText = 'Temiz';
-            detailText = 'Kayıt bulunamadı.';
-        }
-
-        const tags = res.data.tags || [];
-        if (tags.length > 0) {
-            detailText += `<br><br><span style="font-size:10.5px; color:#94a3b8;"><b>Etiketler:</b> ${tags.join(', ')}</span>`;
-        }
-    } else if (srcName.includes('urlscan') && res.data) {
-        const total = res.data.total || 0;
-        const results = res.data.results || [];
-        if (total > 0) {
-            statusClass = 'st-suspicious'; statusText = 'İncelendi';
-            detailText = `Kayıtlarda ${total} kez analiz edilmiş.`;
-
-            if (results.length > 0 && results[0].page) {
-                const page = results[0].page;
-                let extraInfo = [];
-                if (page.ip) extraInfo.push(`<b>IP:</b> ${page.ip}`);
-                if (page.server) extraInfo.push(`<b>Sunucu:</b> ${page.server}`);
-                if (page.asn) extraInfo.push(`<b>ASN:</b> ${page.asn} (${page.asnname || ''})`);
-                if (extraInfo.length > 0) detailText += `<br><br><span style="font-size:10.5px; color:#e2e8f0;">${extraInfo.join(' | ')}</span>`;
-            }
-            linksHtml = `<a href="https://urlscan.io/search/#domain:${document.getElementById('targetValue').textContent}" target="_blank" class="soc-ext-link">urlscan.io'da Gör</a>`;
-        } else {
-            statusClass = 'st-clean'; statusText = 'Bilinmiyor';
-            detailText = "Geçmiş analiz bulunamadı.";
-        }
-    } else if (srcName.includes('USOM') && res.data) {
-        const count = res.data.totalCount || 0;
-        if (count > 0) {
-            statusClass = 'st-malicious'; statusText = 'Zararlı';
-            const model = res.data.models[0];
-            const reason = model.desc || 'Zararlı Bağlantı';
-            detailText = `USOM (TR) Kara Listesinde Tehdit Algılandı: ${reason}`;
-            let extraInfo = [];
-            if (model.source) extraInfo.push(`<b>Kaynak:</b> ${model.source}`);
-            if (model.date) extraInfo.push(`<b>Eklenme Tarihi:</b> ${model.date.split(' ')[0]}`);
-            if (extraInfo.length > 0) detailText += `<br><br><span style="font-size:10.5px; color:#e2e8f0;">${extraInfo.join(' | ')}</span>`;
-            linksHtml = `<a href="https://www.usom.gov.tr/zararli-baglantilar" target="_blank" class="soc-ext-link">USOM'da Ara</a>`;
-        } else {
-            statusClass = 'st-clean'; statusText = 'Temiz';
-            detailText = "USOM kayıtlarında bulunamadı.";
-        }
-    } else if (srcName.includes('HaveIBeenPwned')) {
-        if (res.breached) {
-            statusClass = 'st-malicious'; statusText = 'Sızıntı Var';
-            let breachCount = Array.isArray(res.data) ? res.data.length : 0;
-            detailText = `E-Posta adresi <b>${breachCount}</b> farklı veri sızıntısında bulundu!`;
-            linksHtml = `<a href="https://haveibeenpwned.com/account/${document.getElementById('targetValue').textContent}" target="_blank" class="soc-ext-link">HIBP'de Analiz Et</a>`;
-        } else {
-            statusClass = 'st-clean'; statusText = 'Güvenli';
-            detailText = "Bilinen bir veri sızıntısı bulunamadı.";
-        }
-    } else if (srcName.includes('Spamhaus') && res.data) {
-        const blacklisted = res.data.domain_blacklisted;
-        if (blacklisted) {
-            statusClass = 'st-malicious'; statusText = 'Kara Listede';
-            detailText = 'Alan adı Spamhaus kara listesinde tespit edildi!';
-            let extraInfo = [];
-            if (res.data.dbl_listed) extraInfo.push('<b>DBL:</b> Spam kaynağı olarak işaretlendi');
-            if (extraInfo.length > 0) detailText += `<br><br><span style="font-size:10.5px; color:#e2e8f0;">${extraInfo.join(' | ')}</span>`;
-            linksHtml = `<a href="https://check.spamhaus.org/" target="_blank" class="soc-ext-link">Spamhaus'ta Kontrol Et</a>`;
-        } else {
-            statusClass = 'st-clean'; statusText = 'Temiz';
-            detailText = 'Alan adı Spamhaus kara listesinde bulunamadı.';
-        }
-    } else if ((srcName.includes('MX') || srcName.includes('DNS')) && res.data) {
-        const resolves = res.data.domain_resolves;
-        if (!resolves) {
-            statusClass = 'st-malicious'; statusText = 'Geçersiz Alan';
-            detailText = `<b>${res.data.domain}</b> alan adı DNS\'de çözümlenemiyor. Muhtemelen sahte e-posta!`;
-        } else {
-            statusClass = 'st-clean'; statusText = 'Alan Adı Geçerli';
-            detailText = `<b>${res.data.domain}</b> alan adı geçerli ve DNS erişilebilir.`;
-        }
-    } else if (srcName.includes('emailrep.io') && res.data) {
-        const rep = res.data.reputation || 'unknown';
-        const susp = res.data.suspicious;
-        if (rep === 'high') { statusClass = 'st-clean'; statusText = 'Yüksek İtibar'; }
-        else if (rep === 'none' || susp) { statusClass = 'st-suspicious'; statusText = 'Şüpheli İtibar'; }
-        else { statusClass = 'st-malicious'; statusText = 'Kötü İtibar'; }
-
-        detailText = `E-Posta geçmişi ve itibar değerlendirmesi: ${rep}`;
-        let extraInfo = [];
-        if (res.data.details) {
-            if (res.data.details.blacklisted) extraInfo.push(`<b>Kara Liste:</b> Evet`);
-            if (res.data.details.malicious_activity) extraInfo.push(`<b>Zararlı Aktivite:</b> Tespit Edildi`);
-            if (res.data.details.credentials_leaked) extraInfo.push(`<b>Sızıntı:</b> Parola Çalınmış`);
-            if (res.data.details.days_since_domain_creation) extraInfo.push(`<b>Alan Adı Yaşı:</b> ${res.data.details.days_since_domain_creation} gün`);
-        }
-        if (extraInfo.length > 0) detailText += `<br><br><span style="font-size:10.5px; color:#e2e8f0;">${extraInfo.join(' | ')}</span>`;
-    } else if (srcName.includes('AbstractAPI') && res.data) {
-        const quality = res.data.quality_score || 0;
-        const deliverability = res.data.deliverability || 'UNKNOWN';
-
-        if (deliverability === 'DELIVERABLE' && quality > 0.5) { statusClass = 'st-clean'; statusText = 'Geçerli'; }
-        else if (deliverability === 'UNDELIVERABLE') { statusClass = 'st-malicious'; statusText = 'Teslim Edilemez'; }
-        else { statusClass = 'st-suspicious'; statusText = 'Şüpheli / Riskli'; }
-
-        detailText = `Adres Kalite Skoru: %${Math.round(quality * 100)}`;
-
-        let extraInfo = [];
-        if (res.data.is_disposable_email && res.data.is_disposable_email.value) extraInfo.push('<b style="color:#ef4444;">10 Dakikalık/Tek Kullanımlık Posta</b>');
-        if (res.data.is_role_email && res.data.is_role_email.value) extraInfo.push('<b>Kurumsal/Rol (info/admin vb.)</b>');
-        if (res.data.is_free_email && res.data.is_free_email.value) extraInfo.push('<b>Ücretsiz Sağlayıcı</b>');
-        if (extraInfo.length > 0) detailText += `<br><br><span style="font-size:10.5px; color:#e2e8f0;">${extraInfo.join(' | ')}</span>`;
-    } else if (srcName.includes('Pre-processor (De-Obfuscator)')) {
-        const isObf = res.data?.is_obfuscated || false;
-        const count = res.data?.decoded_blocks || 0;
-
-        if (isObf) {
-            statusClass = 'st-malicious'; statusText = 'Zararlı Özellik';
-            detailText = `L3 İncelemesi yapıldı. Analiz öncesinde <b>${count} gizlenmiş (obfuscated) blok</b> tespit edildi ve çözüldü.`;
-        } else {
-            statusClass = 'st-clean'; statusText = 'Temiz';
-            detailText = 'Script içerisinde bir gizleme/obfuscation tespit edilmedi.';
-        }
-    } else {
-        // Fallback
-        detailText = "Kayıt analiz edildi.";
+        return {
+            verdict: 'error',
+            metric: 'Hata',
+            detailHtml: `<div style="color:#94a3b8;">${sh(res.error || 'API isteği başarısız')}</div>`
+        };
     }
 
-    div.innerHTML = `
-        <div class="src-header">
-            <span class="src-name">${srcName}</span>
-            <span class="src-status ${statusClass}">${statusText}</span>
-        </div>
-        <div class="src-text">
-            ${detailText}
-            ${linksHtml ? `<div style="margin-top: 8px;">${linksHtml}</div>` : ''}
-        </div>
+    const src  = res.source || '';
+    const data = (res.data && typeof res.data === 'object') ? res.data : {};
+
+    // ── VirusTotal ────────────────────────────────────────────────
+    if (src.includes('VirusTotal')) {
+        const vtData = data.data;
+        const attrs  = (vtData && typeof vtData === 'object') ? (vtData.attributes || {}) : {};
+        const stats  = attrs.last_analysis_stats || {};
+        const mal    = stats.malicious  || 0;
+        const sus    = stats.suspicious || 0;
+        const total  = Object.values(stats).reduce((a, b) => a + b, 0);
+        const verdict = mal > 4 ? 'malicious' : (mal > 0 || sus > 0 ? 'suspicious' : 'clean');
+        const rep = attrs.reputation;
+        return {
+            verdict,
+            metric: total > 0 ? `${mal}/${total}` : '—',
+            detailHtml: `
+                <div>🔍 <b>${mal}</b> zararlı / <b>${sus}</b> şüpheli / <b>${total}</b> motor</div>
+                ${rep !== undefined ? `<div>👥 İtibar: <b style="color:${rep < 0 ? '#ef4444' : rep > 0 ? '#10b981' : '#94a3b8'}">${rep > 0 ? '+' + rep : rep}</b></div>` : ''}
+                ${attrs.tags?.length ? `<div>🏷️ ${attrs.tags.slice(0,5).map(t => sh(t)).join(', ')}</div>` : ''}
+            `
+        };
+    }
+
+    // ── AbuseIPDB ─────────────────────────────────────────────────
+    if (src.includes('AbuseIPDB')) {
+        const d     = data.data || {};
+        const score = d.abuseConfidenceScore || 0;
+        const verdict = score > 70 ? 'malicious' : score > 20 ? 'suspicious' : 'clean';
+        const scoreColor = verdict === 'malicious' ? '#ef4444' : verdict === 'suspicious' ? '#f59e0b' : '#10b981';
+        return {
+            verdict,
+            metric: `${score}%`,
+            detailHtml: `
+                <div>📊 Güven skoru: <b style="color:${scoreColor}">${score}%</b></div>
+                <div>📋 Rapor sayısı: <b>${d.totalReports || 0}</b></div>
+                <div>🌐 ISP: ${sh(d.isp || '—')}</div>
+                <div>🏳️ Ülke: ${sh(d.countryCode || '—')}</div>
+                ${d.domain ? `<div>🔗 Domain: ${sh(d.domain)}</div>` : ''}
+                <div style="margin-top:4px;"><a href="https://www.abuseipdb.com/check/${document.getElementById('targetValue').textContent}" target="_blank">AbuseIPDB'de Gör →</a></div>
+            `
+        };
+    }
+
+    // ── Shodan ────────────────────────────────────────────────────
+    if (src.includes('Shodan')) {
+        const ports = data.open_ports || [];
+        const vulns = data.vulns || [];
+        const verdict = vulns.length > 0 ? 'suspicious' : ports.length > 0 ? 'clean' : 'unknown';
+        return {
+            verdict,
+            metric: ports.length > 0 ? `${ports.slice(0,3).join(',')}` : '—',
+            detailHtml: `
+                ${ports.length > 0 ? `<div>🔓 Açık portlar: <b>${ports.join(', ')}</b></div>` : '<div>🔒 Açık port tespit edilmedi.</div>'}
+                ${vulns.length > 0 ? `<div>⚠️ CVE: <span style="color:#f59e0b">${vulns.slice(0,5).join(', ')}</span></div>` : ''}
+                ${data.org  ? `<div>🏢 Org: ${sh(data.org)}</div>`  : ''}
+                ${data.os   ? `<div>💻 OS: ${sh(data.os)}</div>`    : ''}
+                ${data.country ? `<div>🌐 Ülke: ${sh(data.country)}</div>` : ''}
+                ${data.hostnames?.length ? `<div>🌍 Hostname: ${data.hostnames.slice(0,3).map(h => sh(h)).join(', ')}</div>` : ''}
+            `
+        };
+    }
+
+    // ── GreyNoise ─────────────────────────────────────────────────
+    if (src.includes('GreyNoise')) {
+        const cls   = data.classification || '';
+        const noise = data.noise || false;
+        const riot  = data.riot  || false;
+        const verdict = cls === 'malicious' ? 'malicious' : (noise && !riot ? 'suspicious' : 'clean');
+        return {
+            verdict,
+            metric: cls || (noise ? 'Noise' : 'Temiz'),
+            detailHtml: `
+                <div>📡 Noise: <b style="color:${noise ? '#f59e0b' : '#10b981'}">${noise ? 'Evet' : 'Hayır'}</b></div>
+                <div>🏢 RIOT: <b>${riot ? 'Evet (Trusted)' : 'Hayır'}</b></div>
+                ${data.name ? `<div>🔖 İsim: ${sh(data.name)}</div>` : ''}
+                ${cls ? `<div>🎯 Sınıf: <b style="color:${cls === 'malicious' ? '#ef4444' : '#10b981'}">${cls}</b></div>` : ''}
+            `
+        };
+    }
+
+    // ── AlienVault OTX ────────────────────────────────────────────
+    if (src.includes('AlienVault') || src.includes('OTX')) {
+        const count = data.pulse_info?.count || 0;
+        const verdict = count > 2 ? 'malicious' : count > 0 ? 'suspicious' : 'clean';
+        const tags = data.pulse_info?.pulses?.[0]?.tags?.slice(0,4) || [];
+        return {
+            verdict,
+            metric: `${count} pulse`,
+            detailHtml: `
+                <div>📡 Pulse sayısı: <b>${count}</b></div>
+                ${tags.length > 0 ? `<div>🏷️ Etiketler: ${tags.map(t => sh(t)).join(', ')}</div>` : ''}
+                <div style="margin-top:4px;"><a href="https://otx.alienvault.com/indicator/ip/${document.getElementById('targetValue').textContent}" target="_blank">OTX'de Gör →</a></div>
+            `
+        };
+    }
+
+    // ── MalwareBazaar ─────────────────────────────────────────────
+    if (src.includes('MalwareBazaar')) {
+        const status = data.query_status;
+        const verdict = status === 'ok' ? 'malicious' : 'clean';
+        const item = data.data?.[0] || {};
+        return {
+            verdict,
+            metric: verdict === 'malicious' ? 'Zararlı' : 'Bulunamadı',
+            detailHtml: `
+                <div>📊 Durum: <b style="color:${verdict === 'malicious' ? '#ef4444' : '#10b981'}">${status === 'ok' ? 'Zararlı olarak listelendi' : 'Listede yok'}</b></div>
+                ${item.file_type ? `<div>📄 Tip: ${sh(item.file_type)}</div>` : ''}
+                ${item.signature ? `<div>🔒 İmza: ${sh(item.signature)}</div>` : ''}
+            `
+        };
+    }
+
+    // ── Hybrid Analysis ───────────────────────────────────────────
+    if (src.includes('Hybrid Analysis')) {
+        const items = Array.isArray(data) ? data : [];
+        const vv = items[0]?.verdict;
+        const verdict = vv === 'malicious' ? 'malicious' : vv === 'suspicious' ? 'suspicious' : items.length > 0 ? 'clean' : 'unknown';
+        return {
+            verdict,
+            metric: vv || (items.length > 0 ? `${items.length} örnek` : '—'),
+            detailHtml: `
+                <div>🔬 Örnek sayısı: <b>${items.length}</b></div>
+                ${vv ? `<div>🎯 Karar: <b style="color:${verdict === 'malicious' ? '#ef4444' : '#10b981'}">${vv}</b></div>` : ''}
+            `
+        };
+    }
+
+    // ── Triage ────────────────────────────────────────────────────
+    if (src.includes('Triage')) {
+        const count = data.sample_count || 0;
+        const verdict = count > 0 ? 'suspicious' : 'clean';
+        return {
+            verdict,
+            metric: count > 0 ? `${count} sample` : 'Bulunamadı',
+            detailHtml: `
+                <div>🔬 Sandbox örneği: <b>${count}</b></div>
+                ${count === 0 ? '<div>✅ Bu hash Triage sandbox\'ında görülmemiş.</div>' : ''}
+            `
+        };
+    }
+
+    // ── Polyswarm ─────────────────────────────────────────────────
+    if (src.includes('Polyswarm')) {
+        const results = data.result || [];
+        const verdict = results.length > 0 ? 'suspicious' : 'clean';
+        return {
+            verdict,
+            metric: `${results.length} sonuç`,
+            detailHtml: `<div>🔬 Sonuç sayısı: <b>${results.length}</b></div>`
+        };
+    }
+
+    // ── Pulsedive ─────────────────────────────────────────────────
+    if (src.includes('Pulsedive')) {
+        const risk = data.risk || 'unknown';
+        const riskLower = risk.toLowerCase();
+        const verdict = ['high', 'critical', 'very high'].includes(riskLower) ? 'malicious'
+            : ['medium', 'low'].includes(riskLower) ? 'suspicious' : 'clean';
+        const threats = (data.threats || []).slice(0,3).map(t => t.name || t).join(', ');
+        const riskColor = verdict === 'malicious' ? '#ef4444' : verdict === 'suspicious' ? '#f59e0b' : '#10b981';
+        return {
+            verdict,
+            metric: risk,
+            detailHtml: `
+                <div>⚠️ Risk: <b style="color:${riskColor}">${risk}</b></div>
+                ${threats ? `<div>🎯 Tehditler: ${sh(threats)}</div>` : ''}
+            `
+        };
+    }
+
+    // ── URLhaus ───────────────────────────────────────────────────
+    if (src.includes('URLhaus')) {
+        const status = data.url_status;
+        const verdict = status === 'online' ? 'malicious' : status === 'offline' ? 'suspicious' : 'clean';
+        return {
+            verdict,
+            metric: status || 'Bulunamadı',
+            detailHtml: `
+                <div>🌐 URL durumu: <b style="color:${verdict === 'malicious' ? '#ef4444' : '#f59e0b'}">${status || 'Bilinmiyor'}</b></div>
+                ${data.threat ? `<div>⚠️ Tehdit: ${sh(data.threat)}</div>` : ''}
+                ${(data.tags || []).length > 0 ? `<div>🏷️ Etiket: ${data.tags.join(', ')}</div>` : ''}
+            `
+        };
+    }
+
+    // ── Sucuri SiteCheck ──────────────────────────────────────────
+    if (src.includes('Sucuri')) {
+        const bls = data.blacklists || [];
+        const isBlacklisted = Array.isArray(bls) && bls.some(b => b.is_blacklisted);
+        const warnings = data.warnings || [];
+        const verdict = isBlacklisted ? 'malicious' : warnings.length > 0 ? 'suspicious' : 'clean';
+        const si = data.site_info || {};
+        return {
+            verdict,
+            metric: isBlacklisted ? 'Kara Listede' : `${warnings.length} uyarı`,
+            detailHtml: `
+                <div>🚫 Kara liste: <b>${isBlacklisted ? 'Evet' : 'Hayır'}</b></div>
+                <div>⚠️ Uyarı: <b>${warnings.length}</b></div>
+                ${si.ip     ? `<div>🌐 IP: ${sh(si.ip)}</div>`          : ''}
+                ${si.server ? `<div>🖥️ Server: ${sh(si.server)}</div>` : ''}
+                ${si.application ? `<div>📦 CMS: ${sh(si.application)}</div>` : ''}
+                <div style="margin-top:4px;"><a href="https://sitecheck.sucuri.net/results/${document.getElementById('targetValue').textContent}" target="_blank">Sucuri'de İncele →</a></div>
+            `
+        };
+    }
+
+    // ── urlscan.io ────────────────────────────────────────────────
+    if (src.includes('urlscan')) {
+        const total   = data.total || 0;
+        const page    = data.results?.[0]?.page || {};
+        return {
+            verdict: total > 0 ? 'unknown' : 'clean',
+            metric: `${total} tarama`,
+            detailHtml: `
+                <div>🔍 Geçmiş tarama sayısı: <b>${total}</b></div>
+                ${page.ip     ? `<div>🌐 IP: ${sh(page.ip)}</div>`     : ''}
+                ${page.server ? `<div>🖥️ Server: ${sh(page.server)}</div>` : ''}
+                ${page.asn    ? `<div>📡 ASN: ${sh(page.asn)} (${sh(page.asnname || '')})</div>` : ''}
+                ${total > 0   ? `<div style="margin-top:4px;"><a href="https://urlscan.io/search/#domain:${document.getElementById('targetValue').textContent}" target="_blank">urlscan'da Gör →</a></div>` : ''}
+            `
+        };
+    }
+
+    // ── USOM ──────────────────────────────────────────────────────
+    if (src.includes('USOM')) {
+        const count = data.totalCount || 0;
+        const model = data.models?.[0] || {};
+        const verdict = count > 0 ? 'malicious' : 'clean';
+        return {
+            verdict,
+            metric: count > 0 ? `${count} eşleşme` : 'Temiz',
+            detailHtml: `
+                <div>🇹🇷 USOM kara liste: <b style="color:${count > 0 ? '#ef4444' : '#10b981'}">${count} eşleşme</b></div>
+                ${model.desc   ? `<div>📋 Açıklama: ${sh(model.desc)}</div>`   : ''}
+                ${model.source ? `<div>📌 Kaynak: ${sh(model.source)}</div>`   : ''}
+                ${model.date   ? `<div>📅 Tarih: ${sh(model.date.split(' ')[0])}</div>` : ''}
+            `
+        };
+    }
+
+    // ── PhishTank ─────────────────────────────────────────────────
+    if (src.includes('PhishTank')) {
+        const inDb = data.in_database || false;
+        const verdict = inDb ? 'malicious' : 'clean';
+        return {
+            verdict,
+            metric: inDb ? 'Phishing!' : 'Temiz',
+            detailHtml: `
+                <div>🎣 PhishTank DB: <b style="color:${inDb ? '#ef4444' : '#10b981'}">${inDb ? 'Evet — Phishing sitesi!' : 'Hayır'}</b></div>
+                ${data.verified !== undefined ? `<div>✅ Doğrulandı: <b>${data.verified ? 'Evet' : 'Hayır'}</b></div>` : ''}
+            `
+        };
+    }
+
+    // ── CIRCL Hashlookup ──────────────────────────────────────────
+    if (src.includes('CIRCL')) {
+        const found = !data.message || data.message !== 'Not found';
+        return {
+            verdict: found ? 'clean' : 'unknown',
+            metric: found ? 'Bulundu' : 'Bulunamadı',
+            detailHtml: `<div>🔍 CIRCL veritabanı: <b>${found ? 'Hash kaydı var (meşru yazılım olabilir)' : 'Kayıt yok'}</b></div>`
+        };
+    }
+
+    // ── IPInfo.io ─────────────────────────────────────────────────
+    if (src.includes('IPInfo')) {
+        const orgShort = (data.org || '').split(' ').slice(0,2).join(' ');
+        return {
+            verdict: 'clean',
+            metric: `${data.country || '?'} / ${orgShort}`,
+            detailHtml: `
+                <div>🌍 Şehir: ${sh(data.city || '—')}, ${sh(data.region || '—')}</div>
+                <div>🌐 Ülke: ${sh(data.country || '—')}</div>
+                <div>🏢 Org: ${sh(data.org || '—')}</div>
+                <div>⏰ Timezone: ${sh(data.timezone || '—')}</div>
+                ${data.loc ? `<div>📍 Konum: ${sh(data.loc)}</div>` : ''}
+            `
+        };
+    }
+
+    // ── ipapi.co ──────────────────────────────────────────────────
+    if (src.includes('ipapi')) {
+        return {
+            verdict: 'clean',
+            metric: sh(data.city || data.country_name || '—', 12),
+            detailHtml: `
+                <div>🌍 Şehir: ${sh(data.city || '—')}</div>
+                <div>🌐 Ülke: ${sh(data.country_name || '—')}</div>
+                <div>🏢 Org: ${sh(data.org || '—')}</div>
+                <div>📡 ASN: ${sh(data.asn || '—')}</div>
+                <div>⏰ Timezone: ${sh(data.timezone || '—')}</div>
+            `
+        };
+    }
+
+    // ── AbstractAPI ───────────────────────────────────────────────
+    if (src.includes('AbstractAPI')) {
+        const del = data.deliverability || 'UNKNOWN';
+        const isDisposable = data.is_disposable_email?.value || false;
+        const verdict = isDisposable ? 'suspicious' : del === 'DELIVERABLE' ? 'clean' : 'unknown';
+        return {
+            verdict,
+            metric: del.substring(0, 12),
+            detailHtml: `
+                <div>📧 Teslim edilebilirlik: <b>${del}</b></div>
+                <div>📊 Kalite skoru: <b>${Math.round((parseFloat(data.quality_score) || 0) * 100)}%</b></div>
+                <div>🗑️ Tek kullanımlık: <b style="color:${isDisposable ? '#ef4444' : '#10b981'}">${isDisposable ? 'Evet' : 'Hayır'}</b></div>
+                <div>📬 MX kaydı: <b>${data.mx_records ? 'Var' : 'Yok'}</b></div>
+            `
+        };
+    }
+
+    // ── emailrep.io ───────────────────────────────────────────────
+    if (src.includes('emailrep')) {
+        const rep = data.reputation || 'unknown';
+        const sus = data.suspicious || false;
+        const verdict = sus ? 'suspicious' : rep === 'none' ? 'unknown' : 'clean';
+        const details = data.details || {};
+        return {
+            verdict,
+            metric: rep,
+            detailHtml: `
+                <div>📊 İtibar: <b>${rep}</b></div>
+                <div>⚠️ Şüpheli: <b style="color:${sus ? '#ef4444' : '#10b981'}">${sus ? 'Evet' : 'Hayır'}</b></div>
+                ${details.blacklisted ? '<div>🚫 Kara listede</div>' : ''}
+                ${details.malicious_activity ? '<div>🔴 Zararlı aktivite tespit edildi</div>' : ''}
+                ${details.credentials_leaked ? '<div>💀 Parola sızmış</div>' : ''}
+                ${details.days_since_domain_creation ? `<div>📅 Alan adı yaşı: ${details.days_since_domain_creation} gün</div>` : ''}
+            `
+        };
+    }
+
+    // ── HaveIBeenPwned ────────────────────────────────────────────
+    if (src.includes('HaveIBeenPwned')) {
+        const breached = res.breached || false;
+        const breachList = Array.isArray(res.data) ? res.data : [];
+        const verdict = breached ? 'malicious' : 'clean';
+        return {
+            verdict,
+            metric: breached ? `${breachList.length} ihlal` : 'İhlal Yok',
+            detailHtml: breached
+                ? `<div>💀 <b>${breachList.length}</b> veri ihlalinde bulundu:</div>
+                   <div style="margin-top:4px;">${breachList.slice(0,5).map(b => `• ${sh(b.Name || '')} (${sh(b.BreachDate || '')})`).join('<br>')}</div>
+                   <div style="margin-top:4px;"><a href="https://haveibeenpwned.com/account/${document.getElementById('targetValue').textContent}" target="_blank">HIBP'de Gör →</a></div>`
+                : '<div>✅ Bu e-posta hiçbir veri ihlalinde görülmemiş.</div>'
+        };
+    }
+
+    // ── BreachDirectory ───────────────────────────────────────────
+    if (src.includes('BreachDirectory')) {
+        const found = data.found || 0;
+        const verdict = found > 0 ? 'suspicious' : 'clean';
+        return {
+            verdict,
+            metric: found > 0 ? `${found} kayıt` : 'Temiz',
+            detailHtml: `
+                <div>🔍 Bulunan kayıt: <b style="color:${found > 0 ? '#f59e0b' : '#10b981'}">${found}</b></div>
+                ${found > 0 ? '<div style="color:#f59e0b;font-size:10px;">⚠️ Sızdırılmış kimlik bilgisi olabilir.</div>' : ''}
+            `
+        };
+    }
+
+    // ── Spamhaus ──────────────────────────────────────────────────
+    if (src.includes('Spamhaus')) {
+        const bl = data.domain_blacklisted || false;
+        const verdict = bl ? 'malicious' : 'clean';
+        return {
+            verdict,
+            metric: bl ? 'Listede!' : 'Temiz',
+            detailHtml: `
+                <div>🚫 DBL kara liste: <b style="color:${data.dbl_listed ? '#ef4444' : '#10b981'}">${data.dbl_listed ? 'Evet' : 'Hayır'}</b></div>
+                <div>🚫 Zen kara liste: <b style="color:${data.sbl_listed ? '#ef4444' : '#10b981'}">${data.sbl_listed ? 'Evet' : 'Hayır'}</b></div>
+                <div style="margin-top:4px;"><a href="https://check.spamhaus.org/" target="_blank">Spamhaus'ta Kontrol Et →</a></div>
+            `
+        };
+    }
+
+    // ── MX / DNS ──────────────────────────────────────────────────
+    if (src.includes('MX') || src.includes('DNS')) {
+        const resolves = data.domain_resolves || false;
+        return {
+            verdict: 'unknown',
+            metric: resolves ? 'Geçerli' : 'Geçersiz',
+            detailHtml: `
+                <div>📡 DNS çözümleme: <b style="color:${resolves ? '#10b981' : '#ef4444'}">${resolves ? 'Başarılı' : 'Başarısız'}</b></div>
+                <div>📬 MX kaydı: <b>${data.mx_valid ? 'Var' : 'Yok veya çözümlenemedi'}</b></div>
+            `
+        };
+    }
+
+    // ── SecurityTrails ────────────────────────────────────────────
+    if (src.includes('SecurityTrails')) {
+        const subCount  = data.subdomain_count || 0;
+        const registrar = data.whois?.registrar || '—';
+        return {
+            verdict: 'unknown',
+            metric: `${subCount} sub`,
+            detailHtml: `
+                <div>🌐 Subdomain sayısı: <b>${subCount}</b></div>
+                <div>📋 Registrar: ${sh(registrar)}</div>
+                ${data.whois?.created ? `<div>📅 Kayıt: ${sh(data.whois.created)}</div>` : ''}
+                ${data.whois?.expires ? `<div>⏳ Bitiş: ${sh(data.whois.expires)}</div>` : ''}
+                ${subCount > 0 ? `<div>🔍 İlk 5: ${(data.subdomains || []).slice(0,5).map(s => sh(s)).join(', ')}</div>` : ''}
+            `
+        };
+    }
+
+    // ── crt.sh ────────────────────────────────────────────────────
+    if (src.includes('crt.sh')) {
+        const certCount   = data.certificate_count || 0;
+        const uniqueNames = data.unique_names || 0;
+        return {
+            verdict: 'unknown',
+            metric: `${certCount} sertifika`,
+            detailHtml: `
+                <div>🔒 Sertifika sayısı: <b>${certCount}</b></div>
+                <div>🌐 Benzersiz isim: <b>${uniqueNames}</b></div>
+                ${data.certificates?.length ? `<div style="margin-top:4px;">${data.certificates.slice(0,3).map(c => `• ${sh(c.common_name || '')} (${c.not_before || ''})`).join('<br>')}</div>` : ''}
+            `
+        };
+    }
+
+    // ── RDAP ──────────────────────────────────────────────────────
+    if (src.includes('RDAP')) {
+        const registrar = data.registrar || '—';
+        return {
+            verdict: 'unknown',
+            metric: sh(registrar, 12),
+            detailHtml: `
+                <div>📋 Registrar: ${sh(registrar)}</div>
+                ${data.registration ? `<div>📅 Kayıt: ${sh(data.registration)}</div>` : ''}
+                ${data.expiration   ? `<div>⏳ Bitiş: ${sh(data.expiration)}</div>`   : ''}
+                ${data.status?.length ? `<div>📊 Durum: ${data.status.join(', ')}</div>` : ''}
+                ${data.name_servers?.length ? `<div>🖥️ NS: ${data.name_servers.slice(0,3).join(', ')}</div>` : ''}
+            `
+        };
+    }
+
+    // ── IntelX ────────────────────────────────────────────────────
+    if (src.includes('IntelX')) {
+        const found = data.total_found || 0;
+        const verdict = found > 0 ? 'suspicious' : 'clean';
+        return {
+            verdict,
+            metric: `${found} kayıt`,
+            detailHtml: `
+                <div>🔍 Bulunan kayıt: <b style="color:${found > 0 ? '#f59e0b' : '#10b981'}">${found}</b></div>
+                ${found > 0 ? (data.records || []).slice(0,3).map(r => `<div>• ${sh(r.name || '')} (${sh(r.date || '')})</div>`).join('') : ''}
+            `
+        };
+    }
+
+    // ── Pre-processor (PowerShell De-Obfuscator) ──────────────────
+    if (src.includes('Pre-processor') || src.includes('De-Obfuscator')) {
+        const isObf = data?.is_obfuscated || false;
+        const count = data?.decoded_blocks || 0;
+        return {
+            verdict: isObf ? 'malicious' : 'clean',
+            metric: isObf ? `${count} blok` : 'Temiz',
+            detailHtml: `
+                <div>🔍 Gizleme (Obfuscation): <b style="color:${isObf ? '#ef4444' : '#10b981'}">${isObf ? 'Tespit edildi' : 'Tespit edilmedi'}</b></div>
+                ${isObf ? `<div>🔓 Çözülen blok: <b>${count}</b></div>` : ''}
+            `
+        };
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────
+    return {
+        verdict: 'unknown',
+        metric: '—',
+        detailHtml: `<div style="color:#94a3b8;">Bu kaynak için detaylı parser henüz tanımlanmamış.</div>`
+    };
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// v2 — VERDICT BAR HTML ÜRETİCİ
+// ══════════════════════════════════════════════════════════════════
+function buildVerdictBarHtml(results) {
+    const counts = { malicious: 0, suspicious: 0, clean: 0 };
+    results.forEach(res => {
+        const { verdict } = classifySource(res);
+        if (verdict in counts) counts[verdict]++;
+    });
+
+    const total = results.length;
+    let html = '';
+
+    if (counts.malicious > 0) {
+        html += `<span class="verdict-pill malicious"><span class="verdict-dot"></span>Zararlı <strong>${counts.malicious}</strong></span>`;
+    }
+    if (counts.suspicious > 0) {
+        html += `<span class="verdict-pill suspicious"><span class="verdict-dot"></span>Şüpheli <strong>${counts.suspicious}</strong></span>`;
+    }
+    if (counts.clean > 0) {
+        html += `<span class="verdict-pill clean"><span class="verdict-dot"></span>Temiz <strong>${counts.clean}</strong></span>`;
+    }
+    html += `<span class="verdict-count-label">${total} kaynak</span>`;
+    return html;
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// v2 — SOURCES ACCORDION (Kapalı başlar, tıklayınca açılır)
+// ══════════════════════════════════════════════════════════════════
+function buildSourcesAccordion(results) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'sources-accordion-inner';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'accordion-header';
+    header.innerHTML = `
+        <span>İstihbarat Kaynakları</span>
+        <svg class="accordion-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
     `;
-    return div;
+
+    // Body (varsayılan kapalı)
+    const body = document.createElement('div');
+    body.className = 'accordion-body';
+    body.style.display = 'none';
+
+    // Chip Grid
+    const grid = document.createElement('div');
+    grid.className = 'chips-grid';
+
+    // Kaynakları ikili grupla
+    for (let i = 0; i < results.length; i += 2) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'chip-row';
+
+        const rowResults  = results.slice(i, i + 2);
+        const chipEls     = [];
+        const detailInfos = [];
+
+        rowResults.forEach((res, idx) => {
+            const { verdict, metric, detailHtml } = classifySource(res);
+            const srcName = res.source || 'Bilinmeyen';
+            const label   = SOURCE_LABELS[srcName] || srcName.split(' ')[0];
+            const isSolo  = rowResults.length === 1; // Tek sayıda kaynak (son satır)
+
+            const chip = document.createElement('div');
+            chip.className = `source-chip${verdict === 'error' ? ' chip-error' : ''}${isSolo ? ' chip-solo' : ''}`;
+            chip.dataset.expanded = 'false';
+            chip.title = srcName;
+            chip.innerHTML = `
+                <span class="chip-dot ${verdict}"></span>
+                <span class="chip-name">${escapeHtml(label)}</span>
+                <span class="chip-metric">${escapeHtml(String(metric).substring(0, 13))}</span>
+            `;
+
+            chipEls.push(chip);
+            detailInfos.push({ detailHtml, srcName });
+            rowEl.appendChild(chip);
+        });
+
+        // Paylaşılan detail panel (satır için tek panel)
+        const detailPanel = document.createElement('div');
+        detailPanel.className = 'chip-detail';
+        detailPanel.style.display = 'none';
+        rowEl.appendChild(detailPanel);
+
+        // Click handler (her chip için)
+        chipEls.forEach((chip, idx) => {
+            chip.addEventListener('click', () => {
+                const isThisExpanded = chip.dataset.expanded === 'true';
+
+                // Tüm chip'leri resetle
+                chipEls.forEach(c => {
+                    c.classList.remove('expanded');
+                    c.dataset.expanded = 'false';
+                });
+
+                if (!isThisExpanded) {
+                    // Bu chip'i aç
+                    chip.classList.add('expanded');
+                    chip.dataset.expanded = 'true';
+                    const { detailHtml, srcName } = detailInfos[idx];
+                    detailPanel.innerHTML = `
+                        <div class="chip-detail-source">📌 ${escapeHtml(srcName)}</div>
+                        ${detailHtml || '<div style="color:#94a3b8;">Detay bilgisi yok.</div>'}
+                    `;
+                    detailPanel.style.display = 'block';
+                } else {
+                    // Aynı chip'e tekrar tıklandı → kapat
+                    detailPanel.style.display = 'none';
+                }
+            });
+        });
+
+        grid.appendChild(rowEl);
+    }
+
+    body.appendChild(grid);
+
+    // Accordion toggle
+    header.addEventListener('click', () => {
+        const isOpen = body.style.display !== 'none';
+        body.style.display = isOpen ? 'none' : 'block';
+        header.classList.toggle('is-open', !isOpen);
+    });
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(body);
+    return wrapper;
 }

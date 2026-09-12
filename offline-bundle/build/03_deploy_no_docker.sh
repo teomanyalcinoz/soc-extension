@@ -72,21 +72,23 @@ success "$(${VENV_PATH}/bin/pip list | wc -l) paket kuruldu."
 # ─── .env Konfigürasyonu ──────────────────────────────────────────────────────
 ENV_FILE="$DEPLOY_ROOT/config/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
-    cp "$BUNDLE_DIR/config/.env.template" "$ENV_FILE"
+    if [[ -f "$BUNDLE_DIR/config/.env.template" ]]; then
+        cp "$BUNDLE_DIR/config/.env.template" "$ENV_FILE"
+    elif [[ -f "$BUNDLE_DIR/config/.env" ]]; then
+        cp "$BUNDLE_DIR/config/.env" "$ENV_FILE"
+    else
+        touch "$ENV_FILE"
+    fi
     warn "YENİ .env oluşturuldu. Düzenleyin: nano $ENV_FILE"
 fi
 ln -sf "$ENV_FILE" "$DEPLOY_ROOT/backend/.env"
 
 # ─── Mevcut Süreci Durdur ─────────────────────────────────────────────────────
-if [[ -f "$PID_FILE" ]]; then
-    OLD_PID=$(cat "$PID_FILE")
-    if kill -0 "$OLD_PID" 2>/dev/null; then
-        info "Mevcut process durduruluyor (PID: $OLD_PID)..."
-        kill "$OLD_PID"
-        sleep 2
-    fi
-    rm -f "$PID_FILE"
-fi
+systemctl stop soc-backend 2>/dev/null || true
+pkill -f uvicorn 2>/dev/null || true
+fuser -k 8000/tcp 2>/dev/null || true
+sleep 2
+rm -f "$PID_FILE"
 
 # ─── Uvicorn'u Başlat ─────────────────────────────────────────────────────────
 info "▶ [5/5] Uvicorn başlatılıyor..."
@@ -107,7 +109,10 @@ sleep 3
 if kill -0 "$NEW_PID" 2>/dev/null; then
     success "Uvicorn çalışıyor (PID: $NEW_PID)"
 else
-    error "Uvicorn başlatılamadı. Log: $LOG_FILE"
+    echo "--- LOG ÇIKTISI ($LOG_FILE) ---"
+    tail -n 25 "$LOG_FILE" 2>/dev/null || true
+    echo "--------------------------------"
+    error "Uvicorn başlatılamadı. Yukarıdaki log detayını inceleyin."
 fi
 
 # ─── Systemd Servis Dosyası Oluştur ─────────────────────────────────────────
@@ -134,7 +139,10 @@ SERVICEEOF
 
 systemctl daemon-reload
 systemctl enable soc-backend.service 2>/dev/null || true
-success "Systemd servisi etkinleştirildi: soc-backend.service"
+pkill -f uvicorn 2>/dev/null || true
+sleep 1
+systemctl restart soc-backend.service 2>/dev/null || true
+success "Systemd servisi etkinleştirildi ve başlatıldı: soc-backend.service"
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════════╗${NC}"

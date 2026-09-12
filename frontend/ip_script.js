@@ -200,7 +200,7 @@ async function handleSearch() {
     cardsContainer.innerHTML = '';
 
     try {
-        const response = await fetch(`http://127.0.0.1:8000/api/analyze/ip/${ip}`);
+        const response = await fetch(`http://10.14.7.20:8000/api/analyze/ip/${ip}`);
         const data = await response.json();
 
         if (!response.ok) {
