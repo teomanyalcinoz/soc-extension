@@ -38,9 +38,12 @@ success "Dizinler: $DEPLOY_ROOT"
 
 # ─── Kaynak Kod ───────────────────────────────────────────────────────────────
 info "▶ [2/5] Kaynak kod kopyalanıyor..."
-rsync -a --delete \
-    "$BUNDLE_DIR/source/backend/" \
-    "$DEPLOY_ROOT/backend/"
+mkdir -p "$DEPLOY_ROOT/backend"
+if command -v rsync &>/dev/null; then
+    rsync -a --delete "$BUNDLE_DIR/source/backend/" "$DEPLOY_ROOT/backend/"
+else
+    cp -rf "$BUNDLE_DIR/source/backend/"* "$DEPLOY_ROOT/backend/"
+fi
 success "Backend: $DEPLOY_ROOT/backend/"
 
 # ─── Virtual Environment ──────────────────────────────────────────────────────
