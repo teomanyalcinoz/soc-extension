@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — IP Adresi İstihbaratı
+TracePoint v2.5 — IP Adresi İstihbaratı
 Desteklenen servisler:
   • VirusTotal
   • AlienVault OTX

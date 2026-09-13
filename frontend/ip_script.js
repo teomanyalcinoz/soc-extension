@@ -9,6 +9,7 @@ const aiSummaryText = document.getElementById('aiSummaryText');
 const chartCard = document.getElementById('chartCard');
 
 let threatChartInstance = null;
+const API_BASE_URL = 'http://10.14.7.20:8000';
 
 // IP Regex (IPv4)
 const IP_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -200,7 +201,7 @@ async function handleSearch() {
     cardsContainer.innerHTML = '';
 
     try {
-        const response = await fetch(`http://10.14.7.20:8000/api/analyze/ip/${ip}`);
+        const response = await fetch(`${API_BASE_URL}/api/analyze/ip/${ip}`);
         const data = await response.json();
 
         if (!response.ok) {

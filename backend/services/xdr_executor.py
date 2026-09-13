@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — Cortex XDR Sorgu Çalıştırıcı
+TracePoint v2.5 — Cortex XDR Sorgu Çalıştırıcı
 İki aşamalı XQL API: sorgu başlat → polling ile sonuç al.
 Kimlik bilgileri .env'den okunur; eksikse graceful "not_configured" döner.
 """

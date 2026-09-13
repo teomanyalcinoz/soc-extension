@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — Hash / Dosya İstihbaratı
+TracePoint v2.5 — Hash / Dosya İstihbaratı
 Desteklenen servisler:
   • VirusTotal
   • AlienVault OTX
@@ -135,7 +135,7 @@ async def query_hybrid_analysis(client: httpx.AsyncClient, file_hash: str) -> Di
     url = "https://www.hybrid-analysis.com/api/v2/search/hash"
     headers = {
         "accept": "application/json",
-        "user-agent": "TracePoint-SOC/2.0",
+        "user-agent": "TracePoint-SOC/2.5",
         "Content-Type": "application/x-www-form-urlencoded",
         "api-key": HYBRID_ANALYSIS_API_KEY,
     }

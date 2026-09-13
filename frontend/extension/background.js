@@ -1,7 +1,7 @@
 // Background Service Worker
 
 // API Sunucu Adresi (Local test: 127.0.0.1:8000 | Canlı Sunucu: 10.14.7.20:8000)
-let SERVER_HOST = "http://127.0.0.1:8000";
+let SERVER_HOST = "http://10.14.7.20:8000";
 let API_BASE = `${SERVER_HOST}/api/analyze`;
 let SPLUNK_SPL_URL = `${SERVER_HOST}/api/splunk/generate-spl`;
 let SPLUNK_EXECUTE_URL = `${SERVER_HOST}/api/splunk/execute`;
@@ -15,12 +15,13 @@ function updateServerHost(host) {
     XDR_EXECUTE_URL = `${SERVER_HOST}/api/xdr/execute`;
 }
 
-// Storage'da özel sunucu adresi kayıtlıysa onu kullan
+// Storage'da özel sunucu adresi kayıtlıysa (ve eski localhost değilse) onu kullan
 chrome.storage.local.get(["server_host"], (res) => {
-    if (res.server_host) {
+    if (res.server_host && res.server_host !== "http://127.0.0.1:8000" && res.server_host !== "http://localhost:8000") {
         updateServerHost(res.server_host);
         console.log("TracePoint API Sunucusu (Storage):", res.server_host);
     } else {
+        updateServerHost(SERVER_HOST);
         console.log("TracePoint API Sunucusu (Default):", SERVER_HOST);
     }
 });

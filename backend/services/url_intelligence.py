@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — URL / Domain İstihbaratı
+TracePoint v2.5 — URL / Domain İstihbaratı
 Desteklenen servisler:
   • VirusTotal
   • URLhaus (abuse.ch)
@@ -151,7 +151,7 @@ async def check_phishtank(url: str, client: httpx.AsyncClient) -> Dict[str, Any]
         resp = await client.post(
             "https://checkurl.phishtank.com/checkurl/",
             data={"url": url, "format": "json"},
-            headers={"User-Agent": "TracePoint-SOC/2.0"},
+            headers={"User-Agent": "TracePoint-SOC/2.5"},
             timeout=_TIMEOUT,
         )
         if resp.status_code == 200:

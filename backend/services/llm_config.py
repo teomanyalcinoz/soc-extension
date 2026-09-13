@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — LLM Konfigürasyonu
+TracePoint v2.5 — LLM Konfigürasyonu
 Azure OpenAI (gpt-5.1-ptu) bağlantı ayarları.
 """
 import os

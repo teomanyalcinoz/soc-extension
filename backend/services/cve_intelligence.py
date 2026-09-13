@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — CVE Zafiyet İstihbaratı
+TracePoint v2.5 — CVE Zafiyet İstihbaratı
 Desteklenen servisler:
   • NIST NVD 2.0 API
   • FIRST EPSS (Exploit Prediction Scoring System)

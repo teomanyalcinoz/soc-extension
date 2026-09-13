@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — Domain / Altyapı İstihbaratı (YENİ)
+TracePoint v2.5 — Domain / Altyapı İstihbaratı
 Desteklenen servisler:
   • SecurityTrails (DNS geçmişi, subdomain'ler, WHOIS)
   • crt.sh (Sertifika Şeffaflık Günlüğü)

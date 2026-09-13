@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — E-Posta İstihbaratı
+TracePoint v2.5 — E-Posta İstihbaratı
 Desteklenen servisler:
   • AbstractAPI (Email Validation)
   • Spamhaus DBL (DNS — ücretsiz)
@@ -165,7 +165,7 @@ async def check_vt_email(email: str) -> dict:
 # 5. emailrep.io — İtibar Kontrolü
 # ──────────────────────────────────────────────────────────────────
 async def check_emailrep(email: str) -> dict:
-    headers = {"User-Agent": "TracePoint-SOC/2.0", "Accept": "application/json"}
+    headers = {"User-Agent": "TracePoint-SOC/2.5", "Accept": "application/json"}
     async with httpx.AsyncClient(timeout=_TIMEOUT, headers=headers) as client:
         try:
             resp = await client.get(f"https://emailrep.io/{email}")
@@ -189,7 +189,7 @@ async def check_hibp(email: str) -> dict:
 
     headers = {
         "hibp-api-key": HIBP_API_KEY,
-        "User-Agent": "TracePoint-SOC/2.0",
+        "User-Agent": "TracePoint-SOC/2.5",
     }
     url = f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}?truncateResponse=false"
     async with httpx.AsyncClient(timeout=_TIMEOUT, headers=headers) as client:

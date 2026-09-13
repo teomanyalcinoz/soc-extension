@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — Ana API Sunucusu (FastAPI)
+TracePoint v2.5 — Ana API Sunucusu (FastAPI)
 """
 import re
 import time
@@ -41,9 +41,9 @@ logger = logging.getLogger("tracepoint")
 # FastAPI Uygulaması
 # ══════════════════════════════════════════════════════════════════
 app = FastAPI(
-    title="TracePoint SOC Assistant API v2.0",
+    title="TracePoint SOC Assistant API v2.5",
     description="Siber Güvenlik Tehdit İstihbaratı, IOC Analizi, Splunk & XDR Entegrasyonu",
-    version="2.0.0",
+    version="2.5.0",
 )
 
 # ── CORS ───────────────────────────────────────────────────────────
@@ -401,6 +401,7 @@ async def execute_xdr_endpoint(req: XDRExecuteRequest):
 # ══════════════════════════════════════════════════════════════════
 # SAĞLIK KONTROLÜ
 # ══════════════════════════════════════════════════════════════════
+@app.get("/health")
 @app.get("/api/health")
 async def health_check():
     """Servis sağlık durumunu döner. Splunk ve XDR yapılandırma durumu dahil."""
@@ -410,7 +411,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "2.0.0",
+        "version": "2.5.0",
         "services": {
             "llm": bool(LLM_URL and LLM_API_KEY),
             "splunk": splunk_configured(),

@@ -234,7 +234,7 @@ async function handleSearch() {
     cardsContainer.innerHTML = '';
 
     try {
-        const response = await fetch(`http://127.0.0.1:8000/api/analyze/hash/${hash}`);
+        const response = await fetch(`${API_BASE_URL}/api/analyze/hash/${hash}`);
         const data = await response.json();
 
         if (!response.ok) {

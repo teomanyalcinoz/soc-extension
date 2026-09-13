@@ -1,5 +1,5 @@
 """
-TracePoint v2.0 — AI Özet Servisi (Azure OpenAI GPT-5.1-ptu)
+TracePoint v2.5 — AI Özet Servisi (Azure OpenAI GPT-5.1-ptu)
 IOC analiz sonuçlarını filtreleyip LLM'e gönderir,
 HTML formatında kısa ve öz bir SOC analizi alır.
 """
