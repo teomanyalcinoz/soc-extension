@@ -1316,6 +1316,35 @@
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
+.spl-query-editor,
+.soc-ext-overlay .spl-query-editor {
+    display: block !important;
+    width: 100% !important;
+    min-height: 80px !important;
+    max-height: 180px !important;
+    font-family: 'JetBrains Mono', 'Consolas', 'Fira Code', monospace !important;
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+    color: #00cec9 !important;
+    background: #0b132b !important;
+    border: 1.5px solid #00cec9 !important;
+    border-radius: 6px !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+    resize: vertical !important;
+    outline: none !important;
+    margin: 8px 0 !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 206, 201, 0.2) !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+}
+
+.spl-query-editor:focus,
+.soc-ext-overlay .spl-query-editor:focus {
+    border-color: #38ef7d !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 12px rgba(56, 239, 125, 0.3) !important;
+}
+
 .soc-ext-overlay.light-theme .spl-query-editor {
     background: #ffffff !important;
     border: 2px solid #4f46e5 !important;

@@ -26,6 +26,7 @@ from services.splunk_executor import execute_spl_query
 from services.report_scanner import analyze_report_text
 from services.xdr_executor import execute_xdr_query
 from services.domain_intelligence import analyze_domain
+from services.cve_intelligence import fetch_cve_details
 
 # ══════════════════════════════════════════════════════════════════
 # Logging Yapılandırması
@@ -89,7 +90,7 @@ async def set_to_cache(key: str, data: dict):
 async def analyze_hash_endpoint(file_hash: str):
     """
     MD5 (32), SHA1 (40) veya SHA256 (64) hash'i çoklu OSINT + sandbox servislerinde sorgular.
-    Servisler: VirusTotal, OTX, CIRCL, MalwareBazaar, Hybrid Analysis, Triage, Polyswarm, Pulsedive
+    Servisler: VirusTotal, OTX, CIRCL, MalwareBazaar, Hybrid Analysis, Polyswarm, Pulsedive
     """
     if not file_hash or len(file_hash) not in (32, 40, 64):
         raise HTTPException(status_code=400, detail="Geçersiz hash formatı. MD5 (32), SHA1 (40) veya SHA256 (64) bekleniyor.")
@@ -114,7 +115,7 @@ async def analyze_hash_endpoint(file_hash: str):
 async def analyze_ip_endpoint(ip_address: str):
     """
     IPv4 adresini çoklu OSINT + network istihbarat servislerinde sorgular.
-    Servisler: VirusTotal, OTX, AbuseIPDB, Shodan, GreyNoise, IPInfo.io, ipapi.co
+    Servisler: VirusTotal, OTX, AbuseIPDB, GreyNoise, IPInfo.io, AbstractAPI IP, ipapi.co
     """
     ip_regex = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
     if not ip_address or not re.match(ip_regex, ip_address):
@@ -196,7 +197,7 @@ async def analyze_domain_endpoint(domain: str):
 async def analyze_email_endpoint(email: str):
     """
     E-Posta adresini güvenlik ve ihlal servislerinde taratır.
-    Servisler: AbstractAPI, Spamhaus DBL, MX/DNS, VirusTotal, emailrep.io, HIBP, BreachDirectory
+    Servisler: AbstractAPI, Spamhaus DBL, MX/DNS, VirusTotal, emailrep.io
     """
     email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     if not email or not re.match(email_regex, email):
@@ -354,27 +355,37 @@ async def execute_spl_endpoint(request: SplunkExecuteRequest):
 # CVE ZAFİYET ANALİZİ
 # ══════════════════════════════════════════════════════════════════
 @app.get("/api/analyze/cve/{cve_id}")
+@app.get("/api/cve/{cve_id}")
 async def analyze_cve_endpoint(cve_id: str):
     """
-    CVE numarasını NIST NVD + FIRST EPSS ile sorgular.
+    CVE numarasını NIST NVD (+ CIRCL fallback) + FIRST EPSS ile sorgular.
     EPSS: zafiyetin gerçek dünyada istismar edilme olasılığı (0-1 arası skor).
     """
-    from services.cve_intelligence import fetch_cve_details
-
     cve_id = cve_id.strip().upper()
     if not cve_id.startswith("CVE-"):
         raise HTTPException(status_code=400, detail="Geçersiz CVE formatı. Örnek: CVE-2024-1234")
 
     cache_key = f"cve_{cve_id}"
-    cached = await get_from_cache(cache_key)
-    if cached:
-        return cached
+    try:
+        cached = await get_from_cache(cache_key)
+        if cached:
+            return cached
+    except Exception:
+        pass
 
     logger.info("CVE analizi başladı: %s", cve_id)
-    result = await fetch_cve_details(cve_id)
+
+    try:
+        result = await fetch_cve_details(cve_id)
+    except Exception as e:
+        logger.error("CVE endpoint beklenmeyen hata (%s): %s", cve_id, e, exc_info=True)
+        return {"status": "error", "cve_id": cve_id, "error": f"Sunucu hatası: {str(e)}"}
 
     if result.get("status") == "success":
-        await set_to_cache(cache_key, result)
+        try:
+            await set_to_cache(cache_key, result)
+        except Exception:
+            pass
 
     return result
 

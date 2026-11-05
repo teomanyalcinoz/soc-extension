@@ -128,8 +128,9 @@ async def check_usom(url: str, client: httpx.AsyncClient) -> Dict[str, Any]:
     domain = _extract_domain(url)
     try:
         resp = await client.get(
-            f"https://www.usom.gov.tr/api/address/index?q={domain}",
+            f"https://siberguvenlik.gov.tr/api/address/index?q={domain}",
             timeout=_TIMEOUT,
+            follow_redirects=True,
         )
         if resp.status_code == 200:
             return {"source": "USOM", "success": True, "data": resp.json()}
@@ -184,6 +185,12 @@ async def check_pulsedive_url(url: str, client: httpx.AsyncClient) -> Dict[str, 
         resp = await client.get("https://pulsedive.com/api/info.php", params=params, timeout=_TIMEOUT)
         if resp.status_code == 200:
             return {"source": "Pulsedive", "success": True, "data": resp.json()}
+        if resp.status_code == 404:
+            return {
+                "source": "Pulsedive",
+                "success": True,
+                "data": {"risk": "none", "threats": [], "not_found": True, "message": "Pulsedive veritabanında kayıt bulunamadı (Temiz)."}
+            }
         return {"source": "Pulsedive", "success": False, "error": f"HTTP {resp.status_code}"}
     except Exception as e:
         logger.warning("Pulsedive URL sorgusu başarısız: %s", e)

@@ -23,9 +23,9 @@ async def test_llm():
             data = response.json()
             print("\nLLM Response:")
             print(data["choices"][0]["message"]["content"].strip())
-            print("\n✅ LLM entegrasyonu başarıyla çalışıyor!")
+            print("\n[OK] LLM entegrasyonu basariyla calisiyor!")
     except Exception as e:
-        print(f"\n❌ LLM entegrasyonunda hata oluştu: {e}")
+        print(f"\n[ERROR] LLM entegrasyonunda hata olustu: {e}")
 
 if __name__ == "__main__":
     asyncio.run(test_llm())

@@ -1442,6 +1442,7 @@ function buildInPageSplCard(q) {
             textarea.className = 'spl-query-editor';
             textarea.value = currentQuery;
             textarea.spellcheck = false;
+            textarea.style.cssText = 'width: 100% !important; min-height: 85px !important; box-sizing: border-box !important; background: #0b132b !important; color: #00cec9 !important; border: 1.5px solid #00cec9 !important; border-radius: 6px !important; padding: 10px 12px !important; font-family: Consolas, monospace !important; font-size: 11px !important; line-height: 1.5 !important; resize: vertical !important; display: block !important; margin: 8px 0 !important; outline: none !important;';
             preEl.replaceWith(textarea);
             textarea.focus();
 
@@ -1533,7 +1534,21 @@ function buildInPageSplCard(q) {
                         return;
                     }
 
-                    resultsDiv.innerHTML = buildInPageSplResultsHtml(response);
+                    resultsDiv.innerHTML = buildInPageSplResultsHtml(response, currentQuery);
+                    const toggleBtn = resultsDiv.querySelector('.spl-inpage-preview-toggle-btn');
+                    if (toggleBtn) {
+                        toggleBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const targetId = toggleBtn.getAttribute('data-target');
+                            const targetEl = resultsDiv.querySelector('#' + targetId);
+                            const chevron = toggleBtn.querySelector('.chevron');
+                            if (targetEl) {
+                                const isHidden = targetEl.style.display === 'none';
+                                targetEl.style.display = isHidden ? 'block' : 'none';
+                                if (chevron) chevron.textContent = isHidden ? '▲' : '▼';
+                            }
+                        });
+                    }
                 }
             );
         });
@@ -1545,7 +1560,7 @@ function buildInPageSplCard(q) {
 /**
  * Sayfa içi panel için Splunk sonuçlarını HTML'e dönüştürür.
  */
-function buildInPageSplResultsHtml(response) {
+function buildInPageSplResultsHtml(response, query) {
     const wrapStyle = 'margin-top:8px; border:1px solid rgba(99,102,241,0.15); border-radius:6px; overflow:hidden;';
 
     if (response.status === "not_configured") {
@@ -1562,36 +1577,119 @@ function buildInPageSplResultsHtml(response) {
 
     if (response.status === "success") {
         const results = response.results || [];
+        const count = response.result_count !== undefined ? response.result_count : results.length;
 
-        if (results.length === 0) {
+        if (count === 0) {
             return `<div style="${wrapStyle}">
-                <div style="text-align:center; padding:14px; font-size:11px; color:#94a3b8;">Sorgu başarıyla çalıştırıldı ancak sonuç bulunamadı.</div>
+                <div style="display:flex; align-items:center; gap:8px; padding:12px; font-size:11px; color:#94a3b8; background:rgba(30,41,59,0.4);">
+                    <span style="font-size:14px;">🛡️</span>
+                    <span>Sorgu çalıştırıldı, kurum loglarında eşleşen kayıt bulunamadı (Temiz).</span>
+                </div>
             </div>`;
         }
 
-        const allKeys = new Set();
+        // Splunk Web arama linki oluştur
+        const rawQ = query || response.query || "";
+        const splunkQ = rawQ.startsWith('|') || rawQ.toLowerCase().startsWith('search ') ? rawQ : `search ${rawQ}`;
+        const webBase = response.splunk_web_url || `https://splunk.kuveytturk.com.tr/en-US/app/search/search?q=${encodeURIComponent(splunkQ)}`;
+
+        // ── Akıllı & Sade Kolon Seçimi (Gereksiz Splunk metadata alanlarını filtrele) ──
+        const BLACKLIST = new Set([
+            'splunk_server', 'sourcetype', 'source', 'host', 'index',
+            'punct', 'linecount', 'timestartpos', 'timeendpos', 'eventtype',
+            'tag', '_bkt', '_cd', '_indextime', '_serial', '_si', '_sourcetype',
+            '_subsecond', '_raw', '_time'
+        ]);
+
+        const PRIORITY_COLS = [
+            'src_ip', 'c-ip', 'dst_ip', 's-ip',
+            'cs-username', 'User', 'user',
+            'cs-host', 'app', 'action', 'sc-status',
+            'ComputerName', 'Image', 'CommandLine',
+            'attack_type', 'response_code', 'rule_name'
+        ];
+
+        const foundKeys = new Set();
         results.forEach(row => {
             Object.keys(row).forEach(k => {
-                if (!k.startsWith('_') || k === '_time' || k === '_raw') {
-                    allKeys.add(k);
+                if (!k.startsWith('_') && !BLACKLIST.has(k)) {
+                    foundKeys.add(k);
                 }
             });
         });
-        const columns = Array.from(allKeys);
 
-        let headerHtml = columns.map(col => `<th style="background:rgba(99,102,241,0.12); padding:5px 8px; text-align:left; font-weight:700; color:#a5b4fc; white-space:nowrap; border-bottom:1px solid rgba(99,102,241,0.2); font-size:10px;">${escapeHtml(col)}</th>`).join('');
+        const chosenCols = [];
+        PRIORITY_COLS.forEach(k => {
+            if (foundKeys.has(k)) {
+                chosenCols.push(k);
+                foundKeys.delete(k);
+            }
+        });
+
+        foundKeys.forEach(k => {
+            if (chosenCols.length < 3) {
+                chosenCols.push(k);
+            }
+        });
+
+        const finalCols = chosenCols.length > 0 ? ['_time', ...chosenCols.slice(0, 3)] : ['_time', '_raw'];
+
+        let headerHtml = finalCols.map(col => {
+            let label = col;
+            if (col === '_time') label = 'Zaman';
+            else if (col === '_raw') label = 'Olay Özeti';
+            return `<th style="background:rgba(99,102,241,0.12); padding:5px 8px; text-align:left; font-weight:700; color:#a5b4fc; white-space:nowrap; border-bottom:1px solid rgba(99,102,241,0.2); font-size:10px;">${escapeHtml(label)}</th>`;
+        }).join('');
+
         let rowsHtml = results.map(row => {
-            const cells = columns.map(col => `<td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.04); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px;" title="${escapeHtml(String(row[col] || ''))}">${escapeHtml(String(row[col] || '-'))}</td>`).join('');
+            const cells = finalCols.map(col => {
+                let val = row[col];
+                if (col === '_time' && typeof val === 'string') {
+                    val = val.split('.')[0].replace('T', ' ');
+                } else if (col === '_raw' && typeof val === 'string') {
+                    val = val.length > 100 ? val.substring(0, 100) + '…' : val;
+                }
+                val = (val === undefined || val === null || val === '') ? '—' : String(val);
+                return `<td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.04); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px;" title="${escapeHtml(val)}">${escapeHtml(val)}</td>`;
+            }).join('');
             return `<tr>${cells}</tr>`;
         }).join('');
 
-        return `<div style="${wrapStyle}">
-            <div style="padding:8px 12px; font-size:11px; font-weight:600; color:#6ee7b7; background:rgba(16,185,129,0.08); border-bottom:1px solid rgba(16,185,129,0.15);">✅ ${response.result_count} sonuç bulundu</div>
-            <div style="overflow-x:auto; max-height:160px; overflow-y:auto;">
-                <table style="width:100%; border-collapse:collapse; font-family:monospace; color:#cbd5e1;">
-                    <thead><tr>${headerHtml}</tr></thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
+        const previewId = 'spl-inpage-prev-' + Math.random().toString(36).substring(2, 9);
+
+        return `
+        <div style="margin-top:8px;">
+            <!-- 1. Sonuç Bildirim Kartı -->
+            <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:20px; line-height:1;">🚨</span>
+                    <div>
+                        <div style="font-size:12px; font-weight:700; color:#34d399;">${count} Adet Eşleşen Log Bulundu</div>
+                        <div style="font-size:10px; color:#94a3b8; margin-top:2px;">Kurum Splunk SIEM loglarında bu IOC ile ilgili aktivite tespit edildi.</div>
+                    </div>
+                </div>
+
+                <!-- 2. Splunk Web'e Yönlendirme Butonu -->
+                <div style="margin-top:10px;">
+                    <a href="${webBase}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:8px 12px; background:#0284c7; color:#ffffff; font-size:11px; font-weight:600; text-decoration:none; border-radius:6px; box-sizing:border-box; box-shadow:0 2px 6px rgba(2,132,199,0.3); transition:background 0.2s;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                        Detaylı Log İncelemesi için Splunk'a Git ↗
+                    </a>
+                </div>
+            </div>
+
+            <!-- 3. Ham Log Önizlemesi (İsteğe Bağlı Akordiyon) -->
+            <div style="border:1px solid rgba(148,163,184,0.15); border-radius:6px; overflow:hidden;">
+                <button type="button" class="spl-inpage-preview-toggle-btn" data-target="${previewId}" style="width:100%; display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:rgba(30,41,59,0.6); border:none; color:#94a3b8; font-size:10px; cursor:pointer; font-weight:500;">
+                    <span>📄 Ham Log Önizlemesini Göster / Gizle (${count} Kayıt)</span>
+                    <span class="chevron">▼</span>
+                </button>
+                <div id="${previewId}" style="display:none; overflow-x:auto; max-height:160px; overflow-y:auto; background:#0b132b; border-top:1px solid rgba(148,163,184,0.1);">
+                    <table style="width:100%; border-collapse:collapse; font-family:monospace; color:#cbd5e1; font-size:10px;">
+                        <thead><tr>${headerHtml}</tr></thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
             </div>
         </div>`;
     }

@@ -37,20 +37,22 @@ async def check_abstract_api(email: str) -> dict:
     if not ABSTRACT_API_KEY:
         return {"source": "AbstractAPI", "success": False, "error": "ABSTRACT_API_KEY ayarlanmamış"}
 
-    url = f"https://emailvalidation.abstractapi.com/v1/?api_key={ABSTRACT_API_KEY}&email={email}"
+    url = f"https://emailreputation.abstractapi.com/v1/?api_key={ABSTRACT_API_KEY}&email={email}"
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         try:
             resp = await client.get(url)
             if resp.status_code == 200:
                 data = resp.json()
+                deliv = data.get("email_deliverability", {})
                 flat = {
-                    "deliverability": data.get("deliverability", "UNKNOWN"),
+                    "deliverability": deliv.get("status", data.get("deliverability", "UNKNOWN")),
                     "quality_score": data.get("quality_score", 0),
-                    "is_disposable_email": {"value": data.get("is_disposable_email", {}).get("value", False)},
-                    "is_free_email": {"value": data.get("is_free_email", {}).get("value", False)},
-                    "is_role_email": {"value": data.get("is_role_email", {}).get("value", False)},
-                    "is_valid_format": data.get("is_valid_format", {}).get("value", False),
-                    "mx_records": data.get("is_mx_found", {}).get("value", False),
+                    "is_disposable_email": {"value": data.get("is_disposable_email", False)},
+                    "is_free_email": {"value": data.get("is_free_email", False)},
+                    "is_role_email": {"value": data.get("is_role_email", False)},
+                    "is_valid_format": data.get("is_valid_format", True),
+                    "breaches": data.get("breaches", []),
+                    "breach_count": len(data.get("breaches", [])),
                 }
                 return {"source": "AbstractAPI", "success": True, "data": flat}
             return {"source": "AbstractAPI", "success": False, "error": f"HTTP {resp.status_code}"}
@@ -266,8 +268,6 @@ async def analyze_email_all(email: str) -> list:
         check_abstract_api(email),
         check_emailrep(email),
         check_vt_email(email),
-        check_hibp(email),
-        check_breachdirectory(email),
         return_exceptions=True,
     )
 

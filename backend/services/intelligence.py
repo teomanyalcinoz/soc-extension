@@ -127,27 +127,36 @@ async def query_malwarebazaar(client: httpx.AsyncClient, file_hash: str) -> Dict
 
 
 # ──────────────────────────────────────────────────────────────────
-# Hybrid Analysis
+# ──────────────────────────────────────────────────────────────────
+# Hybrid Analysis (Falcon Sandbox) v2.35+
 # ──────────────────────────────────────────────────────────────────
 async def query_hybrid_analysis(client: httpx.AsyncClient, file_hash: str) -> Dict[str, Any]:
     if not HYBRID_ANALYSIS_API_KEY:
         return {"source": "Hybrid Analysis", "success": False, "error": "HYBRID_ANALYSIS_API_KEY ayarlanmamış"}
-    url = "https://www.hybrid-analysis.com/api/v2/search/hash"
+    url = f"https://hybrid-analysis.com/api/v2/overview/{file_hash}/summary"
     headers = {
         "accept": "application/json",
-        "user-agent": "TracePoint-SOC/2.5",
-        "Content-Type": "application/x-www-form-urlencoded",
+        "user-agent": "Falcon Sandbox",
         "api-key": HYBRID_ANALYSIS_API_KEY,
     }
     try:
-        resp = await client.post(url, data={"hash": file_hash}, headers=headers, timeout=_TIMEOUT, follow_redirects=True)
+        resp = await client.get(url, headers=headers, timeout=_TIMEOUT)
         if resp.status_code in (401, 403):
             return {"source": "Hybrid Analysis", "success": False, "error": f"Yetkilendirme Hatası ({resp.status_code})"}
-        return {
-            "source": "Hybrid Analysis",
-            "success": resp.status_code == 200,
-            "data": resp.json() if resp.status_code == 200 else resp.text,
-        }
+        if resp.status_code == 200:
+            data = resp.json()
+            return {
+                "source": "Hybrid Analysis",
+                "success": True,
+                "data": [data] if isinstance(data, dict) else data,
+            }
+        if resp.status_code == 404:
+            return {
+                "source": "Hybrid Analysis",
+                "success": True,
+                "data": [{"verdict": "clean", "not_found": True, "message": "Kayıt bulunamadı (Temiz)"}],
+            }
+        return {"source": "Hybrid Analysis", "success": False, "error": f"HTTP {resp.status_code}"}
     except Exception as e:
         logger.warning("Hybrid Analysis sorgusu başarısız: %s", e)
         return {"source": "Hybrid Analysis", "success": False, "error": str(e)}
@@ -204,6 +213,12 @@ async def query_polyswarm(client: httpx.AsyncClient, file_hash: str) -> Dict[str
             return {"source": "Polyswarm", "success": False, "error": f"Yetkilendirme Hatası ({resp.status_code})"}
         if resp.status_code == 200:
             return {"source": "Polyswarm", "success": True, "data": resp.json()}
+        if resp.status_code == 204:
+            return {
+                "source": "Polyswarm",
+                "success": True,
+                "data": {"result": [], "positives": 0, "total": 0, "not_found": True, "message": "Polyswarm veritabanında kayıt bulunamadı (Temiz)."}
+            }
         return {"source": "Polyswarm", "success": False, "error": f"HTTP {resp.status_code}"}
     except Exception as e:
         logger.warning("Polyswarm sorgusu başarısız: %s", e)
@@ -221,6 +236,12 @@ async def query_pulsedive_hash(client: httpx.AsyncClient, file_hash: str) -> Dic
         resp = await client.get("https://pulsedive.com/api/info.php", params=params, timeout=_TIMEOUT)
         if resp.status_code == 200:
             return {"source": "Pulsedive", "success": True, "data": resp.json()}
+        if resp.status_code == 404:
+            return {
+                "source": "Pulsedive",
+                "success": True,
+                "data": {"risk": "none", "threats": [], "not_found": True, "message": "Pulsedive veritabanında kayıt bulunamadı (Temiz)."}
+            }
         return {"source": "Pulsedive", "success": False, "error": f"HTTP {resp.status_code}"}
     except Exception as e:
         logger.warning("Pulsedive hash sorgusu başarısız: %s", e)
@@ -242,7 +263,6 @@ async def analyze_hash(file_hash: str) -> Dict[str, Any]:
             query_circl(client, file_hash),
             query_malwarebazaar(client, file_hash),
             query_hybrid_analysis(client, file_hash),
-            query_triage(client, file_hash),
             query_polyswarm(client, file_hash),
             query_pulsedive_hash(client, file_hash),
             return_exceptions=True,

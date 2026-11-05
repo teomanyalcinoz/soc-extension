@@ -9,3 +9,6 @@ env/
 .antigravityignore
 *.log
 backend/test_out.txt
+*.7z
+offline-bundle/build/dist/*update*
+offline-bundle/build/dist/TracePoint-*.zip

@@ -1,7 +1,8 @@
 // Background Service Worker
 
-// API Sunucu Adresi (Local test: 127.0.0.1:8000 | Canlı Sunucu: 10.14.7.20:8000)
-let SERVER_HOST = "http://10.14.7.20:8000";
+// API Sunucu Adresi (Varsayılan Canlı Kurumsal: 10.14.7.20:8000 | Yerel Test: 127.0.0.1:8000)
+const CANLI_HOST = "http://10.14.7.20:8000";
+let SERVER_HOST = CANLI_HOST; // Kurumsal bilgisayarda 127.0.0.1 aranıp 'Failed to fetch' oluşmaması için varsayılan CANLI_HOST
 let API_BASE = `${SERVER_HOST}/api/analyze`;
 let SPLUNK_SPL_URL = `${SERVER_HOST}/api/splunk/generate-spl`;
 let SPLUNK_EXECUTE_URL = `${SERVER_HOST}/api/splunk/execute`;
@@ -15,16 +16,27 @@ function updateServerHost(host) {
     XDR_EXECUTE_URL = `${SERVER_HOST}/api/xdr/execute`;
 }
 
-// Storage'da özel sunucu adresi kayıtlıysa (ve eski localhost değilse) onu kullan
-chrome.storage.local.get(["server_host"], (res) => {
-    if (res.server_host && res.server_host !== "http://127.0.0.1:8000" && res.server_host !== "http://localhost:8000") {
-        updateServerHost(res.server_host);
-        console.log("TracePoint API Sunucusu (Storage):", res.server_host);
-    } else {
-        updateServerHost(SERVER_HOST);
-        console.log("TracePoint API Sunucusu (Default):", SERVER_HOST);
+// Akıllı Sunucu Tespiti: Yerel backend açıksa 127.0.0.1 kullan, değilse canlı 10.14.7.20'de kal
+async function detectBestServer() {
+    try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 800);
+        const res = await fetch("http://127.0.0.1:8000/health", { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (res.ok) {
+            updateServerHost("http://127.0.0.1:8000");
+            console.log("TracePoint API Sunucusu (Yerel Geliştirme Aktif): http://127.0.0.1:8000");
+            return;
+        }
+    } catch (e) {
+        // Yerel sunucu yoksa varsayılan CANLI_HOST aktif kalır
     }
-});
+    updateServerHost(CANLI_HOST);
+    console.log("TracePoint API Sunucusu (Canlı Kurumsal Sunucu):", CANLI_HOST);
+}
+
+// Başlangıçta sunucu kontrolü yap
+detectBestServer();
 
 // Arama/Sorgu sonuçlarını hafızada tutmak için eklenti veritabanı değişkeni
 let latestScanResult = null;
@@ -71,6 +83,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         // FastAPI (Backend) sunucumuza OSINT isteği
         fetch(endpoint, fetchOptions)
+            .catch(async (netErr) => {
+                // Bağlantı başarısız olduysa alternatif sunucuyu (10.14.7.20 <-> 127.0.0.1) hemen dene
+                const currentOrigin = new URL(endpoint).origin;
+                const altHost = currentOrigin.includes("127.0.0.1") || currentOrigin.includes("localhost")
+                    ? CANLI_HOST
+                    : "http://127.0.0.1:8000";
+                const altEndpoint = endpoint.replace(currentOrigin, altHost);
+                console.log(`İlk sunucu (${currentOrigin}) erişilemedi, alternatif deneniyor: ${altHost}`);
+                const retryRes = await fetch(altEndpoint, fetchOptions);
+                if (retryRes.ok) {
+                    updateServerHost(altHost);
+                    return retryRes;
+                }
+                throw netErr;
+            })
             .then(res => {
                 if (!res.ok) throw new Error(`Sunucu Hatası: Gelen Kod ${res.status}`);
                 return res.json();
@@ -223,16 +250,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Asenkron için
     }
     
-    // CVE Detay Analizi (NIST NVD)
+    // CVE Detay Analizi (NIST NVD + CIRCL)
     if (request.action === "fetch_cve") {
         const cveId = encodeURIComponent(request.cveId);
-        fetch(`${API_BASE}/cve/${cveId}`)
+        const targetUrl = `${SERVER_HOST}/api/analyze/cve/${cveId}`;
+        fetch(targetUrl)
             .then(res => {
                 if (!res.ok) throw new Error(`CVE API Hatası: ${res.status}`);
                 return res.json();
             })
             .then(data => sendResponse(data))
-            .catch(err => sendResponse({ status: "error", cve_id: request.cveId, error: err.toString() }));
+            .catch(err => {
+                // Eğer ilk deneme başarısız olduysa doğrudan CANLI_HOST dene
+                fetch(`${CANLI_HOST}/api/analyze/cve/${cveId}`)
+                    .then(res => res.json())
+                    .then(data => sendResponse(data))
+                    .catch(fallbackErr => {
+                        sendResponse({
+                            status: "error",
+                            cve_id: request.cveId,
+                            error: `Kurum sunucusuna (${SERVER_HOST}) erişilemedi. Ağ/VPN bağlantınızı kontrol edin. Detay: ${err.message || err.toString()}`
+                        });
+                    });
+            });
         return true;
     }
 

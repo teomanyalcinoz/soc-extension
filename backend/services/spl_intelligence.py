@@ -113,19 +113,18 @@ Görevin, verilen IOC değeri ve OSINT bağlamı için Splunk SPL sorguları ür
 ## SPL YAZIM KURALLARI (Bunlara KESINLIKLE uy):
 
 1. **Index her zaman ilk filtre**: Performans için `index=<indexname>` her zaman en başta yaz
-2. **Zaman aralığı**: `earliest=-30d@d latest=now` kullan (varsayılan 30 gün)
+2. **Zaman aralığı**: Performans ve hız için `earliest=-3d latest=now` kullan (varsayılan son 3 gün)
 3. **Kesin eşleme**: IP, hash, domain gibi değerler tırnak içinde yazılır: `src_ip="1.2.3.4"`
 4. **Joker dikkatli**: Wildcard (`*`) kullanımını minimize et, sadece gerektiğinde
 5. **IN operatörü**: Birden fazla değer için `field IN ("val1", "val2")` kullan (Splunk 7.2+)
-6. **stats count**: Gruplama için `| stats count by field1, field2`
-7. **table**: Sadece gerekli alanları göster: `| table _time, field1, field2`
-8. **sort**: `| sort -_time` ile en yeni önce
+6. **stats count**: Gruplama için `| stats count by field1, field2` (sade ve hızlı tut)
+7. **table**: Sadece gerekli alanları göster: `| table _time, field1, field2` | head 50
+8. **sort**: `| sort -_time` veya `| sort -count`
 9. **dedup**: Tekrar eden kayıtları temizle: `| dedup src_ip, dst_ip`
-10. **where threshold**: Anlamlı filtreleme için `| where count > 1`
-11. **Büyük/küçük harf**: SPL komutları (index, stats, table, sort) küçük harf
-12. **Pipeline zinciri**: Her komut yeni satırda `|` ile başlar (okunabilirlik)
-13. **Hash araması**: Sysmon'da `Hashes` alanı `MD5=<hash>,SHA256=<hash>` formatındadır, wildcard kullan: `Hashes="*<HASHVALUE>*"`
-14. **EventID bazlı**: Windows loglarında her zaman EventID ile başla
+10. **Büyük/küçük harf**: SPL komutları (index, stats, table, sort) küçük harf
+11. **Pipeline zinciri**: Her komut yeni satırda `|` ile başlar (okunabilirlik)
+12. **Hash araması**: Sysmon'da `Hashes` alanı `MD5=<hash>,SHA256=<hash>` formatındadır, wildcard kullan: `Hashes="*<HASHVALUE>*"`
+13. **EventID bazlı**: Windows loglarında her zaman EventID ile başla
 
 ## ÇIKTI FORMATI:
 Sadece JSON array döndür, başka hiçbir açıklama, markdown veya kod bloğu ekleme.
@@ -312,30 +311,28 @@ def _generate_fallback_spl(
             if idx == "panos":
                 description = "Palo Alto Firewall'da kaynak ve hedef IP bazlı trafik analizi"
                 query = (
-                    f'index=panos earliest=-30d@d latest=now (src_ip="{val}" OR dst_ip="{val}")\n'
-                    f'| stats count by src_ip, dst_ip, app, action, rule_name\n'
-                    f'| sort -count'
+                    f'index=panos earliest=-3d latest=now (src_ip="{val}" OR dst_ip="{val}")\n'
+                    f'| stats count, values(app) as app, values(action) as action by src_ip, dst_ip'
                 )
             elif idx == "bluecoat":
                 description = "Blue Coat Proxy üzerinden bu IP'ye yapılan web istekleri"
                 query = (
-                    f'index=bluecoat earliest=-30d@d latest=now c-ip="{val}"\n'
-                    f'| stats count by cs-host, sc-status, cs-username\n'
-                    f'| sort -count\n'
-                    f'| table cs-username, cs-host, sc-status, count'
+                    f'index=bluecoat earliest=-3d latest=now (c-ip="{val}" OR cs-host="*{val}*")\n'
+                    f'| stats count by cs-username, cs-host, sc-status\n'
+                    f'| sort -count'
                 )
             elif idx == "wineventlog":
                 description = "Sysmon ağ bağlantısı loglarında bu IP ile iletişim (EventID 3)"
                 query = (
-                    f'index=wineventlog earliest=-30d@d latest=now EventID=3 DestinationIp="{val}"\n'
+                    f'index=wineventlog earliest=-3d latest=now EventID=3 DestinationIp="{val}"\n'
                     f'| stats count by ComputerName, User, Image, DestinationPort\n'
                     f'| sort -count'
                 )
             elif idx == "f5":
                 description = "F5 WAF'ta bu IP'den gelen saldırı girişimleri"
                 query = (
-                    f'index=f5 earliest=-30d@d latest=now src_ip="{val}"\n'
-                    f'| stats count by attack_type, uri, response_code, severity\n'
+                    f'index=f5 earliest=-3d latest=now src_ip="{val}"\n'
+                    f'| stats count by attack_type, response_code\n'
                     f'| sort -count'
                 )
 
@@ -343,9 +340,9 @@ def _generate_fallback_spl(
             if idx == "wineventlog":
                 description = "Sysmon Process Create loglarında bu hash değerine sahip süreç tespiti"
                 query = (
-                    f'index=wineventlog earliest=-30d@d latest=now EventID=1 Hashes="*{val}*"\n'
-                    f'| table _time, ComputerName, User, Image, CommandLine, ParentCommandLine, ParentImage\n'
-                    f'| sort -_time'
+                    f'index=wineventlog earliest=-3d latest=now EventID=1 Hashes="*{val}*"\n'
+                    f'| table _time, ComputerName, User, Image, CommandLine\n'
+                    f'| head 50'
                 )
 
         elif ioc_type == "url":
@@ -359,57 +356,57 @@ def _generate_fallback_spl(
             if idx == "panos":
                 description = f"Palo Alto Firewall'da {domain} adresine yapılan bağlantılar"
                 query = (
-                    f'index=panos earliest=-30d@d latest=now cs-host="*{domain}*"\n'
-                    f'| stats count by src_ip, dst_ip, app, action\n'
-                    f'| sort -count'
+                    f'index=panos earliest=-3d latest=now cs-host="*{domain}*"\n'
+                    f'| stats count, values(action) as action by src_ip, cs-host\n'
+                    f'| head 50'
                 )
             elif idx == "bluecoat":
                 description = f"Blue Coat Proxy üzerinden {domain} adresine yapılan web istekleri"
                 query = (
-                    f'index=bluecoat earliest=-30d@d latest=now cs-host="*{domain}*"\n'
-                    f'| stats count by c-ip, cs-uri-stem, sc-status, cs-username\n'
+                    f'index=bluecoat earliest=-3d latest=now cs-host="*{domain}*"\n'
+                    f'| stats count by c-ip, cs-username, sc-status\n'
                     f'| sort -count\n'
-                    f'| table c-ip, cs-username, cs-host, cs-uri-stem, sc-status, count'
+                    f'| head 50'
                 )
             elif idx == "f5":
                 description = f"F5 WAF'ta {domain} domain'ini hedef alan istekler"
                 query = (
-                    f'index=f5 earliest=-30d@d latest=now uri="*{domain}*"\n'
+                    f'index=f5 earliest=-3d latest=now uri="*{domain}*"\n'
                     f'| stats count by src_ip, attack_type, response_code\n'
-                    f'| sort -count'
+                    f'| sort -count\n'
+                    f'| head 50'
                 )
             elif idx == "fortimail":
                 description = f"FortiMail'de {domain} alan adından gelen/giden mailler"
                 query = (
-                    f'index=fortimail earliest=-30d@d latest=now (sender="*@{domain}" OR recipient="*@{domain}")\n'
-                    f'| table _time, sender, recipient, subject, action, virus\n'
-                    f'| sort -_time'
+                    f'index=fortimail earliest=-3d latest=now (sender="*@{domain}" OR recipient="*@{domain}")\n'
+                    f'| table _time, sender, recipient, subject, action\n'
+                    f'| head 50'
                 )
 
         elif ioc_type == "email":
             if idx == "fortimail":
                 description = f"FortiMail'de {val} e-posta adresiyle ilgili tüm posta olayları"
                 query = (
-                    f'index=fortimail earliest=-30d@d latest=now (sender="{val}" OR recipient="{val}")\n'
-                    f'| table _time, sender, recipient, subject, action, virus, attachment\n'
-                    f'| sort -_time'
+                    f'index=fortimail earliest=-3d latest=now (sender="{val}" OR recipient="{val}")\n'
+                    f'| table _time, sender, recipient, subject, action\n'
+                    f'| head 50'
                 )
             elif idx == "wineventlog":
                 description = f"Windows Event loglarında {val} e-posta adresi geçen olaylar"
                 query = (
-                    f'index=wineventlog earliest=-30d@d latest=now "{val}"\n'
+                    f'index=wineventlog earliest=-3d latest=now "{val}"\n'
                     f'| table _time, ComputerName, User, EventID, Message\n'
-                    f'| sort -_time'
+                    f'| head 50'
                 )
 
         elif ioc_type == "powershell":
             if idx == "wineventlog":
                 description = "PowerShell Script Block Logging ve Module Logging kayıtları (EventID 4103/4104)"
                 query = (
-                    f'index=wineventlog earliest=-30d@d latest=now EventID IN (4103, 4104, 400)\n'
-                    f'| search ScriptBlockText="*{val[:50]}*"\n'
+                    f'index=wineventlog earliest=-3d latest=now EventID IN (4103, 4104) ScriptBlockText="*{val[:50]}*"\n'
                     f'| table _time, ComputerName, User, EventID, ScriptBlockText\n'
-                    f'| sort -_time'
+                    f'| head 50'
                 )
 
         if query:

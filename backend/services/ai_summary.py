@@ -108,7 +108,8 @@ def _filter_results(intelligence_results: list) -> list:
             summary["quality_score"] = round(float(data.get("quality_score") or 0), 2)
             disp = data.get("is_disposable_email", {})
             summary["is_disposable"] = disp.get("value", False) if isinstance(disp, dict) else bool(disp)
-            summary["mx_records"] = data.get("mx_records", False)
+            summary["breach_count"] = data.get("breach_count", 0)
+            summary["breached"] = data.get("breach_count", 0) > 0
 
         # ── emailrep.io ───────────────────────────────────────────
         elif "emailrep.io" in src:

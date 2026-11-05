@@ -28,6 +28,7 @@ ABUSEIPDB_API_KEY  = os.getenv("ABUSEIPDB_API_KEY", "")
 SHODAN_API_KEY     = os.getenv("SHODAN_API_KEY", "")
 GREYNOISE_API_KEY  = os.getenv("GREYNOISE_API_KEY", "")
 IPINFO_API_KEY     = os.getenv("IPINFO_API_KEY", "")
+ABSTRACT_IP_API_KEY = os.getenv("ABSTRACT_IP_API_KEY", "")
 
 _TIMEOUT = 12.0
 
@@ -46,10 +47,16 @@ async def query_virustotal_ip(client: httpx.AsyncClient, ip: str) -> Dict[str, A
             return {"source": "VirusTotal", "success": False, "error": "API Anahtarı Geçersiz (401)"}
         if resp.status_code == 404:
             return {"source": "VirusTotal", "success": True, "data": {"message": "Not found"}}
+        if resp.status_code == 200:
+            return {
+                "source": "VirusTotal",
+                "success": True,
+                "data": resp.json(),
+            }
         return {
             "source": "VirusTotal",
-            "success": resp.status_code == 200,
-            "data": resp.json() if resp.status_code == 200 else resp.text,
+            "success": False,
+            "error": f"HTTP {resp.status_code}: {resp.text[:100]}",
         }
     except Exception as e:
         logger.warning("VirusTotal IP sorgusu başarısız: %s", e)
@@ -66,11 +73,9 @@ async def query_otx_ip(client: httpx.AsyncClient, ip: str) -> Dict[str, Any]:
         resp = await client.get(url, headers=headers, timeout=_TIMEOUT, follow_redirects=True)
         if resp.status_code == 404:
             return {"source": "AlienVault OTX", "success": True, "data": {"message": "Not found"}}
-        return {
-            "source": "AlienVault OTX",
-            "success": resp.status_code == 200,
-            "data": resp.json() if resp.status_code == 200 else resp.text,
-        }
+        if resp.status_code == 200:
+            return {"source": "AlienVault OTX", "success": True, "data": resp.json()}
+        return {"source": "AlienVault OTX", "success": False, "error": f"HTTP {resp.status_code}: {resp.text[:100]}"}
     except Exception as e:
         logger.warning("OTX IP sorgusu başarısız: %s", e)
         return {"source": "AlienVault OTX", "success": False, "error": str(e)}
@@ -94,11 +99,9 @@ async def query_abuseipdb(client: httpx.AsyncClient, ip: str) -> Dict[str, Any]:
         )
         if resp.status_code == 401:
             return {"source": "AbuseIPDB", "success": False, "error": "API Anahtarı Geçersiz (401)"}
-        return {
-            "source": "AbuseIPDB",
-            "success": resp.status_code == 200,
-            "data": resp.json() if resp.status_code == 200 else resp.text,
-        }
+        if resp.status_code == 200:
+            return {"source": "AbuseIPDB", "success": True, "data": resp.json()}
+        return {"source": "AbuseIPDB", "success": False, "error": f"HTTP {resp.status_code}: {resp.text[:100]}"}
     except Exception as e:
         logger.warning("AbuseIPDB sorgusu başarısız: %s", e)
         return {"source": "AbuseIPDB", "success": False, "error": str(e)}
@@ -205,8 +208,9 @@ async def query_ipinfo(client: httpx.AsyncClient, ip: str) -> Dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────
 async def query_ipapi(client: httpx.AsyncClient, ip: str) -> Dict[str, Any]:
     url = f"https://ipapi.co/{ip}/json/"
+    headers = {"User-Agent": "TracePoint-SOC/2.5"}
     try:
-        resp = await client.get(url, timeout=_TIMEOUT)
+        resp = await client.get(url, headers=headers, timeout=_TIMEOUT)
         if resp.status_code == 200:
             data = resp.json()
             if data.get("error"):
@@ -233,6 +237,25 @@ async def query_ipapi(client: httpx.AsyncClient, ip: str) -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────
+# AbstractAPI — IP Intelligence & VPN/Proxy Tespiti
+# ──────────────────────────────────────────────────────────────────
+async def query_abstract_ip(client: httpx.AsyncClient, ip: str) -> Dict[str, Any]:
+    if not ABSTRACT_IP_API_KEY:
+        return {"source": "AbstractAPI IP", "success": False, "error": "ABSTRACT_IP_API_KEY ayarlanmamış"}
+    url = f"https://ip-intelligence.abstractapi.com/v1/?api_key={ABSTRACT_IP_API_KEY}&ip_address={ip}"
+    try:
+        resp = await client.get(url, timeout=_TIMEOUT)
+        if resp.status_code == 200:
+            return {"source": "AbstractAPI IP", "success": True, "data": resp.json()}
+        if resp.status_code == 401:
+            return {"source": "AbstractAPI IP", "success": False, "error": "API Anahtarı Geçersiz (401)"}
+        return {"source": "AbstractAPI IP", "success": False, "error": f"HTTP {resp.status_code}"}
+    except Exception as e:
+        logger.warning("AbstractAPI IP sorgusu başarısız: %s", e)
+        return {"source": "AbstractAPI IP", "success": False, "error": str(e)}
+
+
+# ──────────────────────────────────────────────────────────────────
 # Ana Analiz Fonksiyonu
 # ──────────────────────────────────────────────────────────────────
 async def analyze_ip(ip_address: str) -> Dict[str, Any]:
@@ -245,9 +268,9 @@ async def analyze_ip(ip_address: str) -> Dict[str, Any]:
             query_virustotal_ip(client, ip_address),
             query_otx_ip(client, ip_address),
             query_abuseipdb(client, ip_address),
-            query_shodan(client, ip_address),
             query_greynoise(client, ip_address),
             query_ipinfo(client, ip_address),
+            query_abstract_ip(client, ip_address),
             query_ipapi(client, ip_address),
             return_exceptions=True,
         )
